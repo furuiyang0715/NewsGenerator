@@ -207,7 +207,21 @@ class NewsBase(object):
         else:
             logger.warning("钉钉消息发送失败")
 
+    def total_company_codes(self):
+        """获取涵盖在统计范围内的全部公司代码 按照文档的写法 是只需要 A 股的"""
+        juyuan = self._init_pool(self.juyuan_cfg)
+        sql = '''select CompanyCode, SecuCode, InnerCode from secumain where SecuCategory = 1; '''
+        ret = juyuan.select_all(sql)
+        _map = {}
+        for r in ret:
+            company_code = r.get("CompanyCode")
+            _map[company_code] = (r.get("SecuCode"), r.get("InnerCode"))
+
+        return _map
+
 
 if __name__ == "__main__":
     b = NewsBase()
-    print(b.inner_company_code_map)
+    # print(b.inner_company_code_map)
+
+    print(b.total_company_codes())
