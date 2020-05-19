@@ -1,4 +1,5 @@
 import base64
+import datetime
 import hashlib
 import hmac
 import json
@@ -219,9 +220,62 @@ class NewsBase(object):
 
         return _map
 
+    def get_closest_quarters(self, _dt=None):
+        """获取距离当前最近季度时间点信息"""
+        if _dt:
+            _today = _dt
+        else:
+            _today = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)
+
+        _year = _today.year
+
+        _spring = datetime.datetime(_year, 3, 31)
+        _summer = datetime.datetime(_year, 6, 30)
+        _autumn = datetime.datetime(_year, 9, 30)
+        _winter = datetime.datetime(_year, 12, 31)
+
+        _last_winter = datetime.datetime(_year-1, 12, 31)
+        _last_autumn = datetime.datetime(_year-1, 9, 30)
+        _last_summer = datetime.datetime(_year-1, 6, 30)
+        _last_spring = datetime.datetime(_year-1, 3, 31)
+
+        _before_last_winter = datetime.datetime(_year - 2, 12, 31)
+        _before_last_autumn = datetime.datetime(_year - 2, 9, 30)
+        _before_last_summer = datetime.datetime(_year - 2, 6, 30)
+        _before_last_spring = datetime.datetime(_year - 2, 3, 31)
+
+        if _today <= _spring:
+            qs = [_last_winter, _last_autumn, _last_summer, _last_spring]
+        elif _today <= _summer:
+            qs = [_spring, _last_winter, _last_autumn, _last_summer]
+        elif _today <= _autumn:
+            qs = [_summer, _spring, _last_winter, _last_autumn]
+        elif _today <= _winter:
+            qs = [_autumn, _summer, _spring, _last_winter]
+        else:
+            raise
+
+        return qs
+
 
 if __name__ == "__main__":
     b = NewsBase()
     # print(b.inner_company_code_map)
 
-    print(b.total_company_codes())
+    # print(b.total_company_codes())
+
+    # ret = b.get_closest_quarters()
+    # print(ret)
+
+    # print(b.get_closest_quarters(datetime.datetime(2020, 1, 1)))
+    # print(b.get_closest_quarters(datetime.datetime(2020, 2, 1)))
+    # print(b.get_closest_quarters(datetime.datetime(2020, 3, 31)))
+    # print(b.get_closest_quarters(datetime.datetime(2020, 5, 30)))
+    # print(b.get_closest_quarters(datetime.datetime(2020, 6, 30)))
+    # print(b.get_closest_quarters(datetime.datetime(2020, 7, 15)))
+    # print(b.get_closest_quarters(datetime.datetime(2020, 9, 30)))
+    # print(b.get_closest_quarters(datetime.datetime(2020, 10, 10)))
+    # print(b.get_closest_quarters(datetime.datetime(2020, 12, 31)))
+
+
+    pass
