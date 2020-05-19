@@ -1,19 +1,27 @@
 import datetime
 import pprint
+import sys
 
-from Finance.base import NewsBase
+from Finance.base import NewsBase, logger
 
 
 class GenFiance(NewsBase):
     def __init__(self, company_code,
-                 # secu_code, secu_abbr,
+                 secu_code, secu_abbr,
                  ):
         super(GenFiance, self).__init__()
         self.company_code = company_code
-        # self.secu_code = secu_code
-        # self.secu_addr = secu_abbr
+        self.secu_code = secu_code
+        self.secu_addr = secu_abbr
 
         self.source_table = 'LC_IncomeStatementAll'
+
+        self.quarter_map = {
+            3: "一",
+            6: "二",
+            9: "三",
+            12: "四",
+        }
 
     def get_quarter_info(self, quarter: datetime.datetime):
         juyuan = self._init_pool(self.juyuan_cfg)
@@ -35,79 +43,104 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         _quarter_last = datetime.datetime(2019, 3, 31)
 
         ret_this, ret_last = self.get_quarter_info(_quarter_this), self.get_quarter_info(_quarter_last)
-        print(ret_this)
-        print(ret_last)
+        logger.info("本期: \n{}\n".format(pprint.pformat(ret_this)))
+        logger.info("上期: \n{}\n".format(pprint.pformat(ret_last)))
 
-        # 计算触发条件
+        # 计算营业额的阈值
+        operatingrevenue_this, operatingrevenue_last = ret_this.get("OperatingRevenue"), ret_last.get("OperatingRevenue")
+        r_threshold = (operatingrevenue_this - operatingrevenue_last) / operatingrevenue_last
+        logger.info("营业额同比计算值: {}".format(r_threshold))
+
+        # 计算触发条件 净利润的阈值
         netprofit_this, netprofit_last = ret_this.get("NetProfit"), ret_last.get("NetProfit")
         threshold = (netprofit_this - netprofit_last) / netprofit_last
+        logger.info("净利润同比计算值: {}".format(threshold))
 
         if netprofit_this > 0 and netprofit_last > 0:
             if threshold >= 0.5:
-                self.inc_50(ret_this, ret_last)
+                self.inc_50(ret_this, ret_last, threshold, r_threshold)
             elif 0 < threshold < 0.5:
-                self.inc(ret_this, ret_last)
+                self.inc(ret_this, ret_last, threshold, r_threshold)
             elif threshold < 0:
-                self.reduce(ret_this, ret_last)
+                self.reduce(ret_this, ret_last, threshold, r_threshold)
 
         elif netprofit_this < 0 and netprofit_last > 0:
-            self.gain_to_loss(ret_this, ret_last)
+            self.gain_to_loss(ret_this, ret_last, threshold, r_threshold)
         elif netprofit_this > 0 and netprofit_last < 0:
-            self.loss_to_gain(ret_this, ret_last)
+            self.loss_to_gain(ret_this, ret_last, threshold, r_threshold)
         elif netprofit_this < 0 and netprofit_last < 0 and abs(netprofit_this) < abs(netprofit_last):
-            self.ease_loss(ret_this, ret_last)
+            self.ease_loss(ret_this, ret_last, threshold, r_threshold)
         elif netprofit_this < 0 and netprofit_last < 0 and abs(netprofit_this) > abs(netprofit_last):
             if threshold > 0.5:
-                self.intensify_loss_50(ret_this, ret_last)
+                self.intensify_loss_50(ret_this, ret_last, threshold, r_threshold)
             else:
-                self.intensify_loss(ret_this, ret_last)
+                self.intensify_loss(ret_this, ret_last, threshold, r_threshold)
 
-    def inc_50(self, ret_this, ret_last):
-        """大幅盈增"""
-        pass
-        # 大幅增盈的触发条件: 比去年的同期盈利增大 50% 以上; 当日发布季度报告 --> 生成一条新闻
-        # item = dict()
-        # item['EndDate'] = ret_this.get("EndDate")     # 最新一季的时间
-        # item['InfoPublDate'] = ret_this.get("InfoPublDate")   # 最新一季报表的发布时间
-        # item['CompanyCode'] = self.company_code
-        # item['SecuCode'] = self.secu_code
-        # item['SecuAbbr'] = self.secu_addr
-        #
-        #
-        # pass
+    def _process_data(self, ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type):
+        threshold = float("%.4f" % threshold)
+        this_operating_revenue = ret_this.get("OperatingRevenue")
+        last_operating_revenue = ret_last.get("OperatingRevenue")
+        this_end_date = ret_this.get("EndDate")
+        this_net_profit = ret_this.get("NetProfit")
+        this_basic_EPS = ret_this.get("BasicEPS")
+        last_basic_EPS = ret_last.get("BasicEPS")
+        quarter_info = """{}年第{}季度""".format(this_end_date.year, self.quarter_map.get(this_end_date.month))
+        item = dict()
+        item['EndDate'] = this_end_date  # 最新一季的时间
+        item['InfoPublDate'] = ret_this.get("InfoPublDate")  # 最新一季报表的发布时间
+        item['CompanyCode'] = self.company_code
+        item['SecuCode'] = self.secu_code
+        item['SecuAbbr'] = self.secu_addr
+        item['ChangeType'] = change_type
+        title = title_format.format(self.secu_addr, quarter_info, this_net_profit, threshold)
+        item['title'] = title
+        content = content_format.format(self.secu_addr, quarter_info, self.secu_addr, quarter_info,
+                                        this_operating_revenue, r_threshold,
+                                        this_net_profit, threshold,
+                                        this_basic_EPS,
+                                        last_operating_revenue, last_basic_EPS)
+        item['content'] = content
+        logger.info(pprint.pformat(item))
 
-    def inc(self, ret_this, ret_last):
+    def inc_50(self, ret_this, ret_last, threshold, r_threshold):
+        """大幅盈增
+        触发条件: 比去年的同期盈利增大 50% 以上; 当日发布季度报告 --> 生成一条新闻
+        """
+        logger.info("大幅盈增")
+
+    def inc(self, ret_this, ret_last, threshold, r_threshold):
         """增盈"""
-        pass
+        logger.info("增盈")
+        title_format = """大幅增盈 - {} {} 净利 {} 亿，同比增长 {}%"""
+        content_format = '''增盈-{}{}业绩: {}{}实现营业收入{}亿, 同期增长{}%, 净利润{}万元, 同期增长{}%。基本每股收益{}元, 上年同期业绩净利润{}万元, 基本每股收益{}元。'''
+        change_type = 1
+        self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
 
-    def reduce(self, ret_this, ret_last):
+    def reduce(self, ret_this, ret_last, threshold, r_threshold):
         """减盈"""
-        pass
+        logger.info("减盈")
 
-    def gain_to_loss(self, ret_this, ret_last):
+    def gain_to_loss(self, ret_this, ret_last, threshold, r_threshold):
         """由盈转亏"""
-        pass
+        logger.info("由盈转亏")
 
-    def loss_to_gain(self, ret_this, ret_last):
+    def loss_to_gain(self, ret_this, ret_last, threshold, r_threshold):
         """由亏转盈"""
-        pass
+        logger.info("由亏转盈")
 
-    def ease_loss(self, ret_this, ret_last):
+    def ease_loss(self, ret_this, ret_last, threshold, r_threshold):
         """减亏"""
-        pass
+        logger.info("减亏")
 
-    def intensify_loss_50(self, ret_this, ret_last):
+    def intensify_loss_50(self, ret_this, ret_last, threshold, r_threshold):
         """大幅增亏"""
-        pass
+        logger.info("大幅增亏")
 
-    def intensify_loss(self, ret_this, ret_last):
+    def intensify_loss(self, ret_this, ret_last, threshold, r_threshold):
         """增亏"""
-        pass
+        logger.info("增亏")
 
 
 if __name__ == "__main__":
-    g = GenFiance(3)
-    # ret = g.get_quarter_info(datetime.datetime(2020, 3, 31))
-    # print(pprint.pformat(ret))
-
+    g = GenFiance(3, '000001', '平安银行')
     g.start()
