@@ -10,16 +10,16 @@ import requests
 import urllib.parse
 
 from Finance.configs import (SPIDER_MYSQL_HOST, SPIDER_MYSQL_PORT, SPIDER_MYSQL_USER, SPIDER_MYSQL_PASSWORD,
-                            SPIDER_MYSQL_DB, PRODUCT_MYSQL_HOST, PRODUCT_MYSQL_PORT, PRODUCT_MYSQL_USER,
-                            PRODUCT_MYSQL_PASSWORD, PRODUCT_MYSQL_DB, JUY_HOST, JUY_PORT, JUY_USER, JUY_PASSWD,
-                            JUY_DB, DC_HOST, DC_PORT, DC_USER, DC_PASSWD, DC_DB, SECRET, TOKEN)
+                             SPIDER_MYSQL_DB, PRODUCT_MYSQL_HOST, PRODUCT_MYSQL_PORT, PRODUCT_MYSQL_USER,
+                             PRODUCT_MYSQL_PASSWORD, PRODUCT_MYSQL_DB, JUY_HOST, JUY_PORT, JUY_USER, JUY_PASSWD,
+                             JUY_DB, DC_HOST, DC_PORT, DC_USER, DC_PASSWD, DC_DB, SECRET, TOKEN)
 from Finance.sql_pool import PyMysqlPoolBase
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
-class MarginBase(object):
+class NewsBase(object):
 
     spider_cfg = {  # 爬虫库
         "host": SPIDER_MYSQL_HOST,
@@ -56,8 +56,7 @@ class MarginBase(object):
     }
 
     def __init__(self):
-        self.target_table_name = 'stk_mttargetsecurities'
-        self.juyuan_table_name = 'MT_TargetSecurities'
+        pass
 
     def _init_pool(self, cfg: dict):
         """
@@ -121,17 +120,26 @@ class MarginBase(object):
             sql_pool.end()
             return count
 
-    def get_inner_code(self, secu_code):
+    def get_inner_code_bysecu(self, secu_code):
+        """通过证券代码获取聚源内部编码"""
         ret = self.inner_code_map.get(secu_code)
         if not ret:
-            logger.warning("{} 不存在内部编码".format(secu_code))
+            logger.warning("此证券代码 {} 不存在内部编码".format(secu_code))
+            raise
+        return ret
+
+    def get_inner_code_bycompany(self, company_code):
+        """通过公司代码获取聚源内部编码"""
+        ret = self.inner_company_code_map.get(company_code)
+        if not ret:
+            logger.warning("此公司编码 {} 不存在内部编码 ".format(company_code))
             raise
         return ret
 
     @property
     def inner_code_map(self):
         """
-        获取聚源内部编码映射表
+        获取 证券代码: 聚源内部编码 映射表
         https://dd.gildata.com/#/tableShow/27/column///
         https://dd.gildata.com/#/tableShow/718/column///
         """
@@ -143,6 +151,22 @@ class MarginBase(object):
         info = {}
         for r in ret:
             key = r.get("SecuCode")
+            value = r.get('InnerCode')
+            info[key] = value
+        return info
+
+    @property
+    def inner_company_code_map(self):
+        """
+        获取 公司编码: 聚源内部编码 映射表
+        """
+        juyuan = self._init_pool(self.juyuan_cfg)
+        sql = '''select CompanyCode, InnerCode from SecuMain WHERE SecuCategory in (1, 2, 8) and SecuMarket in (83, 90) and ListedSector in (1, 2, 6, 7);'''
+        ret = juyuan.select_all(sql)
+        juyuan.dispose()
+        info = {}
+        for r in ret:
+            key = r.get("CompanyCode")
             value = r.get('InnerCode')
             info[key] = value
         return info
@@ -182,3 +206,8 @@ class MarginBase(object):
             logger.info("钉钉发送消息成功: {}".format(msg))
         else:
             logger.warning("钉钉消息发送失败")
+
+
+if __name__ == "__main__":
+    b = NewsBase()
+    print(b.inner_company_code_map)
