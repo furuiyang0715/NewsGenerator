@@ -75,7 +75,7 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
             'IfAdjusted': 2,
             'IfMerged': 1,
             'InfoPublDate': datetime.datetime(2020, 4, 21, 0, 0),
-            'NetProfit': Decimal('-3548000000.0000'),
+            'NetProfit': Decimal('-10548000000.0000'),
             'OperatingRevenue': Decimal('33926000000.0000'),
         }
 
@@ -261,26 +261,29 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
 
     def intensify_loss(self, ret_this, ret_last, threshold, r_threshold):
         """增亏
-        触发条件: 去年同期亏损, 今年同期亏损增大，当日发布季度报告 --> 生成一条新闻
+        触发条件: 去年同期亏损, 今年同期亏损增大，当日发布季度报告
         """
-        logger.info("增亏")
-        title_format = '增亏{}{}净利{}，同比下跌：{}%'
-        content_format = '增亏-{}{}业绩：{}{}实现营业收入{}，同期下跌{}%，净利润{}万元，同期下跌{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'
-        change_type = 7  # 增亏
+        key_word = "增亏"
+        title_format = key_word + '-{}{}净利{}，同比下跌{}%'
+        operatingrevenue_str = "增长" if r_threshold > 0 else "下跌"
+        content_format = key_word + '-{}{}业绩：{}{}实现营业收入{}，同期' + operatingrevenue_str \
+                         + '{}%，净利润{}元，同期下跌{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'
+        change_type = 7
         self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
 
     def intensify_loss_50(self, ret_this, ret_last, threshold, r_threshold):
         """大幅增亏
-        触发条件: 去年同期亏损，今年同期亏损增大50%以上，当日发布季度报告 --> 生成一条新闻
+        触发条件: 去年同期亏损，今年同期亏损增大50%以上，当日发布季度报告
         """
-        logger.info("大幅增亏")
-        title_format = '大幅增亏-{}{}净利{}，同比下跌:{}%'
-        content_format = '大幅增亏-{}{}业绩: {}{}实现营业收入{}, 同期下跌{}%,净利润{}元, 同期下跌{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'
-        change_type = 8  # 大幅减亏
+        key_word = "大幅增亏"
+        title_format = key_word + '-{}{}净利{}，同比下跌:{}%'
+        operatingrevenue_str = "增长" if r_threshold > 0 else "下跌"
+        content_format = key_word + '-{}{}业绩: {}{}实现营业收入{}, 同期' + operatingrevenue_str \
+                         + '下跌{}%,净利润{}元, 同期下跌{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'
+        change_type = 8
         self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
 
 
 if __name__ == "__main__":
-    # 测试增盈
     g = GenFiance(3, '000001', '平安银行')
     g.start()
