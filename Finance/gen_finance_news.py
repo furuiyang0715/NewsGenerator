@@ -76,14 +76,45 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
             else:
                 self.intensify_loss(ret_this, ret_last, threshold, r_threshold)
 
+    def re_percent_data(self, data):
+        """处理百分率数据"""
+        # ret = float("%.4f" % data) * 100
+        ret = float("%.2f" % (data * 100))
+        return ret
+
+    def re_hundredmillion_data(self, data):
+        """将元转换为亿元 并且保留两位小数"""
+        ret = float("%.2f" % (data / 10**8))
+        return ret
+
+    def re_ten_thousand_data(self, data):
+        """将元转换为万元 并且保留两位小数"""
+        ret = float("%.2f" % (data / 10**4))
+        return ret
+
+    def re_decimal_data(self, data):
+        """一般小数保留里两位"""
+        ret = float("%.2f" % data)
+        return ret
+
     def _process_data(self, ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type):
-        threshold = float("%.4f" % threshold)
-        this_operating_revenue = ret_this.get("OperatingRevenue")
-        last_operating_revenue = ret_last.get("OperatingRevenue")
         this_end_date = ret_this.get("EndDate")
-        this_net_profit = ret_this.get("NetProfit")
-        this_basic_EPS = ret_this.get("BasicEPS")
-        last_basic_EPS = ret_last.get("BasicEPS")
+
+        # 转换为 保留两位的百分数
+        threshold = self.re_percent_data(threshold)
+        r_threshold = self.re_percent_data(r_threshold)
+
+        # 营业收入的单位从 元 转换为 亿元
+        this_operating_revenue = self.re_hundredmillion_data(ret_this.get("OperatingRevenue"))
+        last_operating_revenue = self.re_hundredmillion_data(ret_last.get("OperatingRevenue"))
+
+        # 净利润的单位 从 元 转换 为 万元
+        this_net_profit = self.re_ten_thousand_data(ret_this.get("NetProfit"))
+        last_net_profit = self.re_ten_thousand_data(ret_last.get("NetProfit"))
+
+        this_basic_EPS = self.re_decimal_data(ret_this.get("BasicEPS"))
+        last_basic_EPS = self.re_decimal_data(ret_last.get("BasicEPS"))
+
         quarter_info = """{}年第{}季度""".format(this_end_date.year, self.quarter_map.get(this_end_date.month))
         item = dict()
         item['EndDate'] = this_end_date  # 最新一季的时间
@@ -98,7 +129,7 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
                                         this_operating_revenue, r_threshold,
                                         this_net_profit, threshold,
                                         this_basic_EPS,
-                                        last_operating_revenue, last_basic_EPS)
+                                        last_net_profit, last_basic_EPS)
         item['content'] = content
         logger.info(pprint.pformat(item))
 
@@ -107,11 +138,15 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         触发条件: 比去年的同期盈利增大 50% 以上; 当日发布季度报告 --> 生成一条新闻
         """
         logger.info("大幅盈增")
+        title_format = """大幅增盈-{}{}净利{}万，同比增长{}%"""
+        content_format = '''大幅增盈-{}{}业绩: {}{}实现营业收入{}亿, 同期增长{}%, 净利润{}万元, 同期增长{}%。基本每股收益{}元, 上年同期业绩净利润{}万元, 基本每股收益{}元。'''
+        change_type = 1
+        self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
 
     def inc(self, ret_this, ret_last, threshold, r_threshold):
         """增盈"""
         logger.info("增盈")
-        title_format = """大幅增盈 - {} {} 净利 {} 亿，同比增长 {}%"""
+        title_format = """增盈-{}{}净利{}万，同比增长{}%"""
         content_format = '''增盈-{}{}业绩: {}{}实现营业收入{}亿, 同期增长{}%, 净利润{}万元, 同期增长{}%。基本每股收益{}元, 上年同期业绩净利润{}万元, 基本每股收益{}元。'''
         change_type = 1
         self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
@@ -119,6 +154,8 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
     def reduce(self, ret_this, ret_last, threshold, r_threshold):
         """减盈"""
         logger.info("减盈")
+        title_format = '减盈-{}{}净利{}亿，同比下跌{}%'
+
 
     def gain_to_loss(self, ret_this, ret_last, threshold, r_threshold):
         """由盈转亏"""
