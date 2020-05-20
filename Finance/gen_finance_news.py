@@ -75,7 +75,7 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
             'IfAdjusted': 2,
             'IfMerged': 1,
             'InfoPublDate': datetime.datetime(2020, 4, 21, 0, 0),
-            'NetProfit': Decimal('3548000000.0000'),
+            'NetProfit': Decimal('-3548000000.0000'),
             'OperatingRevenue': Decimal('33926000000.0000'),
         }
 
@@ -135,12 +135,18 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
     def re_money_data(self, data):
         """根据元数量的大小将其转换为对应的万元、亿元等
         """
+        # 保留原始值的符号
+        if data > 0:
+            flag = 1
+        else:
+            flag = -1
+
         data = abs(data)
         if 0 <= data < 10 ** 8:   # 小于 1 亿的钱以万为单位
-            data = self.re_ten_thousand_data(data)
+            data = self.re_ten_thousand_data(data) * flag
             return "{}万".format(data)
         else:
-            data = self.re_hundredmillion_data(data)
+            data = self.re_hundredmillion_data(data) * flag
             return "{}亿".format(data)
 
     def _process_data(self, ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type):
@@ -219,12 +225,14 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
 
     def gain_to_loss(self, ret_this, ret_last, threshold, r_threshold):
         """由盈转亏
-        触发条件: 去年同期盈利, 今年同期出现亏损, 当日发布季度报告 --> 生成一条新闻
+        触发条件: 去年同期盈利, 今年同期出现亏损, 当日发布季度报告
         """
-        logger.info("由盈转亏")
-        title_format = '由盈转亏-{}{}净利{}，同比下跌{}%'
-        content_format = '由盈转亏-{}{}业绩: {}{}实现营业收入{}, 同期下跌{}%，净利润{}万元，同期下跌{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'
-        change_type = 4   # 由盈转亏
+        key_word = "由盈转亏"
+        title_format = key_word + '-{}{}净利{}，同比下跌{}%'
+        operatingrevenue_str = "增长" if r_threshold > 0 else "下跌"
+        content_format = key_word + '''-{}{}业绩: {}{}实现营业收入{}, 同期''' + operatingrevenue_str \
+                         + '''{}%，净利润{}万元，同期下跌{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'''
+        change_type = 4
         self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
 
     def loss_to_gain(self, ret_this, ret_last, threshold, r_threshold):
