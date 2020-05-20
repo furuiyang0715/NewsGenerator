@@ -22,6 +22,16 @@ class GenFiance(NewsBase):
             9: "三",
             12: "四",
         }
+        self.change_type_map = {
+            1: "大幅增盈",
+            2: "增盈",
+            3: "减盈",
+            4: "由盈转亏",
+            5: "由亏转盈",
+            6: "减亏",
+            7: "增亏",
+            8: '大幅增亏',
+        }
 
     def get_quarter_info(self, quarter: datetime.datetime):
         juyuan = self._init_pool(self.juyuan_cfg)
@@ -153,44 +163,82 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         logger.info("大幅盈增")
         title_format = """大幅增盈-{}{}净利{}，同比增长{}%"""
         content_format = '''大幅增盈-{}{}业绩: {}{}实现营业收入{}, 同期增长{}%, 净利润{}元, 同期增长{}%。基本每股收益{}元, 上年同期业绩净利润{}元, 基本每股收益{}元。'''
-        change_type = 1
+        change_type = 1   # 大幅增盈
         self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
 
     def inc(self, ret_this, ret_last, threshold, r_threshold):
-        """增盈"""
+        """增盈
+        触发条件: 去年同期盈利，同比去年同期增大盈利，当日发布季度报告 --> 生成一条新闻
+        """
         logger.info("增盈")
         title_format = """增盈-{}{}净利{}，同比增长{}%"""
         content_format = '''增盈-{}{}业绩: {}{}实现营业收入{}, 同期增长{}%, 净利润{}元, 同期增长{}%。基本每股收益{}元, 上年同期业绩净利润{}元, 基本每股收益{}元。'''
-        change_type = 1
+        change_type = 2  # 增盈
         self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
 
     def reduce(self, ret_this, ret_last, threshold, r_threshold):
-        """减盈"""
+        """减盈
+        触发条件: 去年同期盈利，同比去年同期减小盈利，当日发布季度报告 --> 生成一条新闻
+        """
         logger.info("减盈")
         title_format = '减盈-{}{}净利{}，同比下跌{}%'
-
+        # TODO 对同期增长和同期下跌也要进行判断
+        content_format = '减盈-{}{}业绩:{}{}实现营业收入{}, 同期增长{}%，净利润{}元，同期下跌{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'
+        change_type = 3  # 减盈
+        self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
 
     def gain_to_loss(self, ret_this, ret_last, threshold, r_threshold):
-        """由盈转亏"""
+        """由盈转亏
+        触发条件: 去年同期盈利, 今年同期出现亏损, 当日发布季度报告 --> 生成一条新闻
+        """
         logger.info("由盈转亏")
+        title_format = '由盈转亏-{}{}净利{}，同比下跌{}%'
+        content_format = '由盈转亏-{}{}业绩: {}{}实现营业收入{}, 同期下跌{}%，净利润{}万元，同期下跌{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'
+        change_type = 4   # 由盈转亏
+        self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
 
     def loss_to_gain(self, ret_this, ret_last, threshold, r_threshold):
-        """由亏转盈"""
+        """由亏转盈
+        触发条件: 去年同期亏损, 今年同期实现盈利, 当日发布季度报告 --> 生成一条新闻
+        """
         logger.info("由亏转盈")
+        title_format = '由亏转盈-{}{}净利{}，同比增长{}%'
+        content_format = '由亏转盈-{}{}业绩:{}{}实现营业收入{}，同期增长{}%，净利润{}元，同期增长{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'
+        change_type = 5  # 由亏转盈
+        self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
 
     def ease_loss(self, ret_this, ret_last, threshold, r_threshold):
-        """减亏"""
+        """减亏
+        触发条件: 去年同期亏损，今年同期亏损减少，当日发布季度报告 --> 生成一条新闻
+        """
         logger.info("减亏")
-
-    def intensify_loss_50(self, ret_this, ret_last, threshold, r_threshold):
-        """大幅增亏"""
-        logger.info("大幅增亏")
+        title_format = '{}{}净利{}, 同比增长{}%'
+        content_format = '减亏-{}{}业绩: {}{}实现营业收入{}, 同期增长{}%，净利润{}万元, 同期增长{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'
+        change_type = 6  # 减亏
+        self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
 
     def intensify_loss(self, ret_this, ret_last, threshold, r_threshold):
-        """增亏"""
+        """增亏
+        触发条件: 去年同期亏损, 今年同期亏损增大，当日发布季度报告 --> 生成一条新闻
+        """
         logger.info("增亏")
+        title_format = '增亏{}{}净利{}，同比下跌：{}%'
+        content_format = '增亏-{}{}业绩：{}{}实现营业收入{}，同期下跌{}%，净利润{}万元，同期下跌{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'
+        change_type = 7  # 增亏
+        self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
+
+    def intensify_loss_50(self, ret_this, ret_last, threshold, r_threshold):
+        """大幅增亏
+        触发条件: 去年同期亏损，今年同期亏损增大50%以上，当日发布季度报告 --> 生成一条新闻
+        """
+        logger.info("大幅增亏")
+        title_format = '大幅增亏-{}{}净利{}，同比下跌:{}%'
+        content_format = '大幅增亏-{}{}业绩: {}{}实现营业收入{}, 同期下跌{}%,净利润{}元, 同期下跌{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'
+        change_type = 8  # 大幅减亏
+        self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
 
 
 if __name__ == "__main__":
+    # 测试增盈
     g = GenFiance(3, '000001', '平安银行')
     g.start()
