@@ -65,7 +65,7 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
             'IfAdjusted': 1,
             'IfMerged': 1,
             'InfoPublDate': datetime.datetime(2020, 4, 21, 0, 0),
-            'NetProfit': Decimal('5446000000.0000'),
+            'NetProfit': Decimal('-5446000000.0000'),
             'OperatingRevenue': Decimal('32476000000.0000'),
         }
 
@@ -75,7 +75,7 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
             'IfAdjusted': 2,
             'IfMerged': 1,
             'InfoPublDate': datetime.datetime(2020, 4, 21, 0, 0),
-            'NetProfit': Decimal('-3548000000.0000'),
+            'NetProfit': Decimal('3548000000.0000'),
             'OperatingRevenue': Decimal('33926000000.0000'),
         }
 
@@ -231,18 +231,20 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         title_format = key_word + '-{}{}净利{}，同比下跌{}%'
         operatingrevenue_str = "增长" if r_threshold > 0 else "下跌"
         content_format = key_word + '''-{}{}业绩: {}{}实现营业收入{}, 同期''' + operatingrevenue_str \
-                         + '''{}%，净利润{}万元，同期下跌{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'''
+                         + '''{}%，净利润{}元，同期下跌{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'''
         change_type = 4
         self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
 
     def loss_to_gain(self, ret_this, ret_last, threshold, r_threshold):
         """由亏转盈
-        触发条件: 去年同期亏损, 今年同期实现盈利, 当日发布季度报告 --> 生成一条新闻
+        触发条件: 去年同期亏损, 今年同期实现盈利, 当日发布季度报告
         """
-        logger.info("由亏转盈")
-        title_format = '由亏转盈-{}{}净利{}，同比增长{}%'
-        content_format = '由亏转盈-{}{}业绩:{}{}实现营业收入{}，同期增长{}%，净利润{}元，同期增长{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'
-        change_type = 5  # 由亏转盈
+        key_word = "由亏转盈"
+        title_format = key_word + '-{}{}净利{}，同比增长{}%'
+        operatingrevenue_str = "增长" if r_threshold > 0 else "下跌"
+        content_format = key_word + '''-{}{}业绩:{}{}实现营业收入{}，同期''' + operatingrevenue_str \
+                         + '''{}%，净利润{}元，同期增长{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'''
+        change_type = 5
         self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
 
     def ease_loss(self, ret_this, ret_last, threshold, r_threshold):
