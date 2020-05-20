@@ -75,7 +75,7 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
             'IfAdjusted': 2,
             'IfMerged': 1,
             'InfoPublDate': datetime.datetime(2020, 4, 21, 0, 0),
-            'NetProfit': Decimal('6548000000.0000'),
+            'NetProfit': Decimal('3548000000.0000'),
             'OperatingRevenue': Decimal('33926000000.0000'),
         }
 
@@ -207,13 +207,14 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
 
     def reduce(self, ret_this, ret_last, threshold, r_threshold):
         """减盈
-        触发条件: 去年同期盈利，同比去年同期减小盈利，当日发布季度报告 --> 生成一条新闻
+        触发条件: 去年同期盈利，同比去年同期减小盈利，当日发布季度报告
         """
-        logger.info("减盈")
-        title_format = '减盈-{}{}净利{}，同比下跌{}%'
-        # TODO 对同期增长和同期下跌也要进行判断
-        content_format = '减盈-{}{}业绩:{}{}实现营业收入{}, 同期增长{}%，净利润{}元，同期下跌{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'
-        change_type = 3  # 减盈
+        key_word = "减盈"
+        title_format = key_word + '-{}{}净利{}，同比下跌{}%'
+        operatingrevenue_str = "增长" if r_threshold > 0 else "下跌"
+        content_format = key_word + '''-{}{}业绩:{}{}实现营业收入{}, 同期''' + operatingrevenue_str \
+                         + '''{}%, 净利润{}元, 同期下跌{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'''
+        change_type = 3
         self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
 
     def gain_to_loss(self, ret_this, ret_last, threshold, r_threshold):
