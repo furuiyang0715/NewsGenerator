@@ -97,6 +97,17 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         ret = float("%.2f" % data)
         return ret
 
+    def re_money_data(self, data):
+        """根据元数量的大小将其转换为对应的万元、亿元等
+        """
+        data = abs(data)
+        if 0 <= data < 10 ** 8:   # 小于 1 亿的钱以万为单位
+            data = self.re_ten_thousand_data(data)
+            return "{}万".format(data)
+        else:
+            data = self.re_hundredmillion_data(data)
+            return "{}亿".format(data)
+
     def _process_data(self, ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type):
         this_end_date = ret_this.get("EndDate")
 
@@ -105,12 +116,12 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         r_threshold = self.re_percent_data(r_threshold)
 
         # 营业收入的单位从 元 转换为 亿元
-        this_operating_revenue = self.re_hundredmillion_data(ret_this.get("OperatingRevenue"))
-        last_operating_revenue = self.re_hundredmillion_data(ret_last.get("OperatingRevenue"))
+        this_operating_revenue = self.re_money_data(ret_this.get("OperatingRevenue"))
+        last_operating_revenue = self.re_money_data(ret_last.get("OperatingRevenue"))
 
         # 净利润的单位 从 元 转换 为 万元
-        this_net_profit = self.re_ten_thousand_data(ret_this.get("NetProfit"))
-        last_net_profit = self.re_ten_thousand_data(ret_last.get("NetProfit"))
+        this_net_profit = self.re_money_data(ret_this.get("NetProfit"))
+        last_net_profit = self.re_money_data(ret_last.get("NetProfit"))
 
         this_basic_EPS = self.re_decimal_data(ret_this.get("BasicEPS"))
         last_basic_EPS = self.re_decimal_data(ret_last.get("BasicEPS"))
@@ -123,6 +134,8 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         item['SecuCode'] = self.secu_code
         item['SecuAbbr'] = self.secu_addr
         item['ChangeType'] = change_type
+        # 指标参数也保留在生成数据库中
+        item['NetProfit'] = ret_this.get("NetProfit")
         title = title_format.format(self.secu_addr, quarter_info, this_net_profit, threshold)
         item['title'] = title
         content = content_format.format(self.secu_addr, quarter_info, self.secu_addr, quarter_info,
@@ -138,23 +151,23 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         触发条件: 比去年的同期盈利增大 50% 以上; 当日发布季度报告 --> 生成一条新闻
         """
         logger.info("大幅盈增")
-        title_format = """大幅增盈-{}{}净利{}万，同比增长{}%"""
-        content_format = '''大幅增盈-{}{}业绩: {}{}实现营业收入{}亿, 同期增长{}%, 净利润{}万元, 同期增长{}%。基本每股收益{}元, 上年同期业绩净利润{}万元, 基本每股收益{}元。'''
+        title_format = """大幅增盈-{}{}净利{}，同比增长{}%"""
+        content_format = '''大幅增盈-{}{}业绩: {}{}实现营业收入{}, 同期增长{}%, 净利润{}元, 同期增长{}%。基本每股收益{}元, 上年同期业绩净利润{}元, 基本每股收益{}元。'''
         change_type = 1
         self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
 
     def inc(self, ret_this, ret_last, threshold, r_threshold):
         """增盈"""
         logger.info("增盈")
-        title_format = """增盈-{}{}净利{}万，同比增长{}%"""
-        content_format = '''增盈-{}{}业绩: {}{}实现营业收入{}亿, 同期增长{}%, 净利润{}万元, 同期增长{}%。基本每股收益{}元, 上年同期业绩净利润{}万元, 基本每股收益{}元。'''
+        title_format = """增盈-{}{}净利{}，同比增长{}%"""
+        content_format = '''增盈-{}{}业绩: {}{}实现营业收入{}, 同期增长{}%, 净利润{}元, 同期增长{}%。基本每股收益{}元, 上年同期业绩净利润{}元, 基本每股收益{}元。'''
         change_type = 1
         self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
 
     def reduce(self, ret_this, ret_last, threshold, r_threshold):
         """减盈"""
         logger.info("减盈")
-        title_format = '减盈-{}{}净利{}亿，同比下跌{}%'
+        title_format = '减盈-{}{}净利{}，同比下跌{}%'
 
 
     def gain_to_loss(self, ret_this, ret_last, threshold, r_threshold):
