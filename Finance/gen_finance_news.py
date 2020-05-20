@@ -1,6 +1,7 @@
 import datetime
 import pprint
 import sys
+from decimal import Decimal
 
 from Finance.base import NewsBase, logger
 
@@ -52,22 +53,47 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         _quarter_this = datetime.datetime(2020, 3, 31)
         _quarter_last = datetime.datetime(2019, 3, 31)
 
+        # 从数据库中获取到上一期的值 和 这一期的值, 均是原始数据
         ret_this, ret_last = self.get_quarter_info(_quarter_this), self.get_quarter_info(_quarter_last)
-        logger.info("本期: \n{}\n".format(pprint.pformat(ret_this)))
-        logger.info("上期: \n{}\n".format(pprint.pformat(ret_last)))
+        # logger.info("本期: \n{}\n".format(pprint.pformat(ret_this)))
+        # logger.info("上期: \n{}\n".format(pprint.pformat(ret_last)))
 
-        # 计算营业额的阈值
+        # [临时]拦截数据进行测试
+        # 测试大幅增盈
+        ret_last = {
+            'BasicEPS': Decimal('0.3800'),
+            'EndDate': datetime.datetime(2019, 3, 31, 0, 0),
+            'IfAdjusted': 1,
+            'IfMerged': 1,
+            'InfoPublDate': datetime.datetime(2020, 4, 21, 0, 0),
+            'NetProfit': Decimal('5446000000.0000'),
+            'OperatingRevenue': Decimal('32476000000.0000'),
+        }
+
+        ret_this = {
+            'BasicEPS': Decimal('0.4000'),
+            'EndDate': datetime.datetime(2020, 3, 31, 0, 0),
+            'IfAdjusted': 2,
+            'IfMerged': 1,
+            'InfoPublDate': datetime.datetime(2020, 4, 21, 0, 0),
+            'NetProfit': Decimal('8548000000.0000'),
+            'OperatingRevenue': Decimal('31926000000.0000'),
+        }
+
+        # 计算营业额的阈值 是根据原始数据计算出的值
         operatingrevenue_this, operatingrevenue_last = ret_this.get("OperatingRevenue"), ret_last.get("OperatingRevenue")
         r_threshold = (operatingrevenue_this - operatingrevenue_last) / operatingrevenue_last
         logger.info("营业额同比计算值: {}".format(r_threshold))
 
-        # 计算触发条件 净利润的阈值
+        # 计算触发条件 净利润的阈值 是根据原始数据计算出的值
         netprofit_this, netprofit_last = ret_this.get("NetProfit"), ret_last.get("NetProfit")
         threshold = (netprofit_this - netprofit_last) / netprofit_last
         logger.info("净利润同比计算值: {}".format(threshold))
 
+        # 核心代码: 判断指标触发了哪一项的触发条件
+        # 上一期和本期均是盈利的
         if netprofit_this > 0 and netprofit_last > 0:
-            if threshold >= 0.5:
+            if threshold >= 0.5:   # 上一期和本期均是盈利的 且盈利大于 50% 触发大幅盈增
                 self.inc_50(ret_this, ret_last, threshold, r_threshold)
             elif 0 < threshold < 0.5:
                 self.inc(ret_this, ret_last, threshold, r_threshold)
@@ -120,14 +146,14 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
 
     def _process_data(self, ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type):
         this_end_date = ret_this.get("EndDate")
+        quarter_info = """{}年第{}季度""".format(this_end_date.year, self.quarter_map.get(this_end_date.month))
 
-        # 转换为 保留两位的百分数
-        threshold = self.re_percent_data(threshold)
-        r_threshold = self.re_percent_data(r_threshold)
+        # 转换为 保留两位的百分数 并且取绝对值 因为前期已经加上了判断增长还是下跌的定语
+        threshold = abs(self.re_percent_data(threshold))
+        r_threshold = abs(self.re_percent_data(r_threshold))
 
         # 营业收入的单位从 元 转换为 亿元
         this_operating_revenue = self.re_money_data(ret_this.get("OperatingRevenue"))
-        last_operating_revenue = self.re_money_data(ret_last.get("OperatingRevenue"))
 
         # 净利润的单位 从 元 转换 为 万元
         this_net_profit = self.re_money_data(ret_this.get("NetProfit"))
@@ -136,7 +162,6 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         this_basic_EPS = self.re_decimal_data(ret_this.get("BasicEPS"))
         last_basic_EPS = self.re_decimal_data(ret_last.get("BasicEPS"))
 
-        quarter_info = """{}年第{}季度""".format(this_end_date.year, self.quarter_map.get(this_end_date.month))
         item = dict()
         item['EndDate'] = this_end_date  # 最新一季的时间
         item['InfoPublDate'] = ret_this.get("InfoPublDate")  # 最新一季报表的发布时间
@@ -157,14 +182,17 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         logger.info(pprint.pformat(item))
 
     def inc_50(self, ret_this, ret_last, threshold, r_threshold):
-        """大幅盈增
-        触发条件: 比去年的同期盈利增大 50% 以上; 当日发布季度报告 --> 生成一条新闻
+        """大幅增盈
+        触发条件: 比去年的同期盈利增大 50% 以上; 当日发布季度报告
         """
-        logger.info("大幅盈增")
-        title_format = """大幅增盈-{}{}净利{}，同比增长{}%"""
-        content_format = '''大幅增盈-{}{}业绩: {}{}实现营业收入{}, 同期增长{}%, 净利润{}元, 同期增长{}%。基本每股收益{}元, 上年同期业绩净利润{}元, 基本每股收益{}元。'''
-        change_type = 1   # 大幅增盈
-        self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
+        key_word = '大幅增盈'
+        title_format = key_word + """-{}{}净利{},同比增长{}%"""
+        operatingrevenue_str = "增长" if r_threshold > 0 else "下跌"
+        content_format = key_word + '''-{}{}业绩:{}{}实现营业收入{},同期''' + operatingrevenue_str \
+                         + '''{}%,净利润{}元,同期增长{}%。基本每股收益{}元,上年同期业绩净利润{}元,基本每股收益{}元。'''
+        change_type = 1
+        self._process_data(ret_this, ret_last, threshold, r_threshold, title_format,
+                           content_format, change_type)
 
     def inc(self, ret_this, ret_last, threshold, r_threshold):
         """增盈
