@@ -48,6 +48,24 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         ret = juyuan.select_one(sql)
         return ret
 
+    def scan(self):
+        """不断扫描数据库 找出发布时间等于扫描时间的记录"""
+        _today = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)
+        _now = datetime.datetime.now()
+        juyuan = self._init_pool(self.juyuan_cfg)
+        fields_str = "CompanyCode, EndDate, InfoPublDate, IfAdjusted, IfMerged, NetProfit, OperatingRevenue, BasicEPS"
+        sql = '''select {} from {} where IfMerged=1 \
+and NetProfit is not NULL \
+and OperatingRevenue is not null \
+and BasicEPS is not null \
+and IfAdjusted in (1,2) \
+and InfoPublDate >= '{}' and InfoPublDate <= '{}'; '''.format(fields_str, self.source_table, _today, _now)
+        logger.info("本次扫描涉及到的查询语句是:\n {}".format(sql))
+        ret = juyuan.select_all(sql)
+        logger.info("本次扫描查询出的个数是:{}".format(len(ret)))
+        for r in ret:
+            logger.info("\n{}".format(pprint.pformat(r)))
+
     def start(self):
         # TODO 季度节点的获取逻辑 文档中有一句 "当日发表季报文档", 以下途径仅为暂时测试使用
         _quarter_this = datetime.datetime(2020, 3, 31)
@@ -58,26 +76,26 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         # logger.info("本期: \n{}\n".format(pprint.pformat(ret_this)))
         # logger.info("上期: \n{}\n".format(pprint.pformat(ret_last)))
 
-        # [临时]拦截数据进行测试
-        ret_last = {
-            'BasicEPS': Decimal('0.3800'),
-            'EndDate': datetime.datetime(2019, 3, 31, 0, 0),
-            'IfAdjusted': 1,
-            'IfMerged': 1,
-            'InfoPublDate': datetime.datetime(2020, 4, 21, 0, 0),
-            'NetProfit': Decimal('-5446000000.0000'),
-            'OperatingRevenue': Decimal('32476000000.0000'),
-        }
-
-        ret_this = {
-            'BasicEPS': Decimal('0.4000'),
-            'EndDate': datetime.datetime(2020, 3, 31, 0, 0),
-            'IfAdjusted': 2,
-            'IfMerged': 1,
-            'InfoPublDate': datetime.datetime(2020, 4, 21, 0, 0),
-            'NetProfit': Decimal('-10548000000.0000'),
-            'OperatingRevenue': Decimal('33926000000.0000'),
-        }
+        # # [临时]拦截数据进行测试
+        # ret_last = {
+        #     'BasicEPS': Decimal('0.3800'),
+        #     'EndDate': datetime.datetime(2019, 3, 31, 0, 0),
+        #     'IfAdjusted': 1,
+        #     'IfMerged': 1,
+        #     'InfoPublDate': datetime.datetime(2020, 4, 21, 0, 0),
+        #     'NetProfit': Decimal('-5446000000.0000'),
+        #     'OperatingRevenue': Decimal('32476000000.0000'),
+        # }
+        #
+        # ret_this = {
+        #     'BasicEPS': Decimal('0.4000'),
+        #     'EndDate': datetime.datetime(2020, 3, 31, 0, 0),
+        #     'IfAdjusted': 2,
+        #     'IfMerged': 1,
+        #     'InfoPublDate': datetime.datetime(2020, 4, 21, 0, 0),
+        #     'NetProfit': Decimal('-10548000000.0000'),
+        #     'OperatingRevenue': Decimal('33926000000.0000'),
+        # }
 
         # 计算营业额的阈值 是根据原始数据计算出的值
         operatingrevenue_this, operatingrevenue_last = ret_this.get("OperatingRevenue"), ret_last.get("OperatingRevenue")
@@ -286,4 +304,6 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
 
 if __name__ == "__main__":
     g = GenFiance(3, '000001', '平安银行')
-    g.start()
+    # g.start()
+
+    g.scan()
