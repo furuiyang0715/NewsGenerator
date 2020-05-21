@@ -48,6 +48,13 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         ret = juyuan.select_one(sql)
         return ret
 
+    def get_more_info_by_companycode(self, company_code):
+        juyuan = self._init_pool(self.juyuan_cfg)
+        sql = '''select SecuCode, SecuAbbr, InnerCode from secumain where CompanyCode = {}; '''.format(company_code)
+        ret = juyuan.select_one(sql)
+        juyuan.dispose()
+        return ret
+
     def scan(self):
         """不断扫描数据库 找出发布时间等于扫描时间的记录"""
         _today = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)
@@ -65,16 +72,24 @@ and InfoPublDate >= '{}' and InfoPublDate <= '{}'; '''.format(fields_str, self.s
         logger.info("本次扫描查询出的个数是:{}".format(len(ret)))
         for r in ret:
             logger.info("\n{}".format(pprint.pformat(r)))
+            # 根据公司代码获取证券代码、证券简称以及聚源内部编码
+            company_code = r.get("CompanyCode")
+            _info = self.get_more_info_by_companycode(company_code)
+            secu_code, secu_abbr, inner_code = _info.get("SecuCode"), _info.get("SecuAbbr"), _info.get("InnerCode")
+            logger.info("证券代码: {}, 证件简称: {}, 聚源内部编码: {}".format(secu_code, secu_abbr, inner_code))
+            # 获得扫描出记录的季度时间点
+            end_date = r.get("EndDate")
+            # 获取同期(上一年)的季度时间点
+            last_end_date = datetime.datetime(end_date.year-1, end_date.month, end_date.day)
+            logger.info("本条记录的季度时间节点是{}, 去年同期的时间节点是{}".format(end_date, last_end_date))
+            # self.diff_quarters(end_date, last_end_date)
 
-    def start(self):
-        # TODO 季度节点的获取逻辑 文档中有一句 "当日发表季报文档", 以下途径仅为暂时测试使用
-        _quarter_this = datetime.datetime(2020, 3, 31)
-        _quarter_last = datetime.datetime(2019, 3, 31)
-
+    def diff_quarters(self, _quarter_this, _quarter_last):
+        """获取两个季度的数据库信息 进行对比以及指标计算 """
         # 从数据库中获取到上一期的值 和 这一期的值, 均是原始数据
         ret_this, ret_last = self.get_quarter_info(_quarter_this), self.get_quarter_info(_quarter_last)
-        # logger.info("本期: \n{}\n".format(pprint.pformat(ret_this)))
-        # logger.info("上期: \n{}\n".format(pprint.pformat(ret_last)))
+        logger.info("本期: \n{}\n".format(pprint.pformat(ret_this)))
+        logger.info("上期: \n{}\n".format(pprint.pformat(ret_last)))
 
         # # [临时]拦截数据进行测试
         # ret_last = {
@@ -304,6 +319,4 @@ and InfoPublDate >= '{}' and InfoPublDate <= '{}'; '''.format(fields_str, self.s
 
 if __name__ == "__main__":
     g = GenFiance(3, '000001', '平安银行')
-    # g.start()
-
     g.scan()
