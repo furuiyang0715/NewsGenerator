@@ -37,7 +37,7 @@ class GenFiance(NewsBase):
     def get_quarter_info(self, quarter: datetime.datetime):
         juyuan = self._init_pool(self.juyuan_cfg)
         sql = '''
-select InfoPublDate, EndDate, IfMerged, IfAdjusted, NetProfit, OperatingRevenue, BasicEPS \
+select InfoPublDate, EndDate, IfMerged, IfAdjusted, NPParentCompanyOwners, OperatingRevenue, BasicEPS \
 from {} where CompanyCode={} and IfMerged=1 \
 and NetProfit is not NULL and OperatingRevenue is not null and BasicEPS is not null \
 and EndDate = '{}' and IfAdjusted in (1,2) \
@@ -56,25 +56,8 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         logger.info("上期: \n{}\n".format(pprint.pformat(ret_last)))
 
         # # [临时]拦截数据进行测试
-        # ret_last = {
-        #     'BasicEPS': Decimal('0.3800'),
-        #     'EndDate': datetime.datetime(2019, 3, 31, 0, 0),
-        #     'IfAdjusted': 1,
-        #     'IfMerged': 1,
-        #     'InfoPublDate': datetime.datetime(2020, 4, 21, 0, 0),
-        #     'NetProfit': Decimal('-5446000000.0000'),
-        #     'OperatingRevenue': Decimal('32476000000.0000'),
-        # }
-        #
-        # ret_this = {
-        #     'BasicEPS': Decimal('0.4000'),
-        #     'EndDate': datetime.datetime(2020, 3, 31, 0, 0),
-        #     'IfAdjusted': 2,
-        #     'IfMerged': 1,
-        #     'InfoPublDate': datetime.datetime(2020, 4, 21, 0, 0),
-        #     'NetProfit': Decimal('-10548000000.0000'),
-        #     'OperatingRevenue': Decimal('33926000000.0000'),
-        # }
+        # ret_last = {}
+        # ret_this = {}
 
         # 计算营业额的阈值 是根据原始数据计算出的值
         operatingrevenue_this, operatingrevenue_last = ret_this.get("OperatingRevenue"), ret_last.get("OperatingRevenue")
@@ -82,35 +65,33 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         logger.info("营业额同比计算值: {}".format(r_threshold))
 
         # 计算触发条件 净利润的阈值 是根据原始数据计算出的值
-        netprofit_this, netprofit_last = ret_this.get("NetProfit"), ret_last.get("NetProfit")
+        netprofit_this, netprofit_last = ret_this.get("NPParentCompanyOwners"), ret_last.get("NPParentCompanyOwners")
         threshold = (netprofit_this - netprofit_last) / netprofit_last
-        logger.info("净利润同比计算值: {}".format(threshold))
+        logger.info("归属于母公司净利润同比计算值: {}".format(threshold))
 
-        # 核心代码: 判断指标触发了哪一项的触发条件
-        # 上一期和本期均是盈利的
+        # 指标触发条件判断
         if netprofit_this > 0 and netprofit_last > 0:
-            if threshold >= 0.5:   # 上一期和本期均是盈利的 且盈利大于 50% 触发大幅盈增
+            if threshold >= 0.5:   # 上一期和本期均是盈利的, 盈利增长, 且增长大于 50% >> 触发大幅盈增
                 self.inc_50(ret_this, ret_last, threshold, r_threshold)
-            elif 0 < threshold < 0.5:
+            elif 0 < threshold < 0.5:   # 上一期和本期均是盈利的, 盈利增长, 但盈利不大于 50% >> 触发增盈
                 self.inc(ret_this, ret_last, threshold, r_threshold)
-            elif threshold < 0:
+            elif threshold < 0:  # 上期和本期均是盈利的, 盈利减少 >> 触发减盈
                 self.reduce(ret_this, ret_last, threshold, r_threshold)
 
-        elif netprofit_this < 0 and netprofit_last > 0:
+        elif netprofit_this < 0 and netprofit_last > 0:  # 上期盈利, 本期亏损 >> 触发由盈转亏
             self.gain_to_loss(ret_this, ret_last, threshold, r_threshold)
-        elif netprofit_this > 0 and netprofit_last < 0:
+        elif netprofit_this > 0 and netprofit_last < 0:  # 上期亏损, 本期盈利 >> 触发由亏转盈
             self.loss_to_gain(ret_this, ret_last, threshold, r_threshold)
         elif netprofit_this < 0 and netprofit_last < 0 and abs(netprofit_this) < abs(netprofit_last):
-            self.ease_loss(ret_this, ret_last, threshold, r_threshold)
+            self.ease_loss(ret_this, ret_last, threshold, r_threshold)  # 均亏损 亏损值减少 >> 触发减亏
         elif netprofit_this < 0 and netprofit_last < 0 and abs(netprofit_this) > abs(netprofit_last):
-            if threshold > 0.5:
+            if threshold > 0.5:  # 均亏损, 亏损值增大,增大幅度大于 50%
                 self.intensify_loss_50(ret_this, ret_last, threshold, r_threshold)
-            else:
+            else:  # 均亏损, 亏损值增大, 但不大于 50%
                 self.intensify_loss(ret_this, ret_last, threshold, r_threshold)
 
     def re_percent_data(self, data):
         """处理百分率数据"""
-        # ret = float("%.4f" % data) * 100
         ret = float("%.2f" % (data * 100))
         return ret
 
@@ -158,8 +139,8 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         this_operating_revenue = self.re_money_data(ret_this.get("OperatingRevenue"))
 
         # 净利润的单位 从 元 转换 为 万元
-        this_net_profit = self.re_money_data(ret_this.get("NetProfit"))
-        last_net_profit = self.re_money_data(ret_last.get("NetProfit"))
+        this_net_profit = self.re_money_data(ret_this.get("NPParentCompanyOwners"))
+        last_net_profit = self.re_money_data(ret_last.get("NPParentCompanyOwners"))
 
         this_basic_EPS = self.re_decimal_data(ret_this.get("BasicEPS"))
         last_basic_EPS = self.re_decimal_data(ret_last.get("BasicEPS"))
@@ -172,7 +153,7 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         item['SecuAbbr'] = self.secu_addr
         item['ChangeType'] = change_type
         # 指标参数也保留在生成数据库中
-        item['NetProfit'] = ret_this.get("NetProfit")
+        item['NPParentCompanyOwners'] = ret_this.get("NPParentCompanyOwners")
         title = title_format.format(self.secu_addr, quarter_info, this_net_profit, threshold)
         item['title'] = title
         content = content_format.format(self.secu_addr, quarter_info, self.secu_addr, quarter_info,

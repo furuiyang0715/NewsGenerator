@@ -22,13 +22,15 @@ class Scanner(NewsBase):
         _today = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)
         _now = datetime.datetime.now()
         juyuan = self._init_pool(self.juyuan_cfg)
-        fields_str = "CompanyCode, EndDate, InfoPublDate, IfAdjusted, IfMerged, NetProfit, OperatingRevenue, BasicEPS"
+        # 与产品沟通之后 这里做了一个调整 就是将"净利润"改为"归属于母公司所有者的净利润"
+        # NetProfit --> NPParentCompanyOwners
+        fields_str = "CompanyCode, EndDate, InfoPublDate, IfAdjusted, IfMerged, NPParentCompanyOwners, OperatingRevenue, BasicEPS"
         sql = '''select {} from {} where IfMerged=1 \
-    and NetProfit is not NULL \
-    and OperatingRevenue is not null \
-    and BasicEPS is not null \
-    and IfAdjusted in (1,2) \
-    and InfoPublDate >= '{}' and InfoPublDate <= '{}'; '''.format(fields_str, self.source_table, _today, _now)
+and NetProfit is not NULL \
+and OperatingRevenue is not null \
+and BasicEPS is not null \
+and IfAdjusted in (1,2) \
+and InfoPublDate >= '{}' and InfoPublDate <= '{}'; '''.format(fields_str, self.source_table, _today, _now)
         logger.info("本次扫描涉及到的查询语句是:\n {}".format(sql))
         ret = juyuan.select_all(sql)
         logger.info("本次扫描查询出的个数是:{}".format(len(ret)))
