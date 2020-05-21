@@ -2,9 +2,13 @@ import datetime
 import pprint
 
 from Finance.base import NewsBase, logger
+from Finance.gen_finance_news import GenFiance
 
 
 class Scanner(NewsBase):
+    def __init__(self):
+        super(Scanner, self).__init__()
+        self.source_table = 'LC_IncomeStatementAll'
 
     def get_more_info_by_companycode(self, company_code):
         juyuan = self._init_pool(self.juyuan_cfg)
@@ -40,5 +44,11 @@ class Scanner(NewsBase):
             # 获取同期(上一年)的季度时间点
             last_end_date = datetime.datetime(end_date.year - 1, end_date.month, end_date.day)
             logger.info("本条记录的季度时间节点是{}, 去年同期的时间节点是{}".format(end_date, last_end_date))
-            # self.diff_quarters(end_date, last_end_date)
+            # 实例化一个 GenFiance 类 需要 company_code, secu_code, secu_abbr 三个参数
+            code_instance = GenFiance(company_code, secu_code, secu_abbr)
+            code_instance.diff_quarters(end_date, last_end_date)
 
+
+if __name__ == "__main__":
+    s = Scanner()
+    s.scan()

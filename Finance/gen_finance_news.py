@@ -44,7 +44,7 @@ and EndDate = '{}' and IfAdjusted in (1,2) \
 ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         '''.format(self.source_table, self.company_code, quarter)
         # 升序为 asc 降序为 desc
-        # print(sql)
+        logger.debug(sql)
         ret = juyuan.select_one(sql)
         return ret
 
@@ -181,7 +181,7 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
                                         this_basic_EPS,
                                         last_net_profit, last_basic_EPS)
         item['content'] = content
-        logger.info(pprint.pformat(item))
+        logger.info("\n" + pprint.pformat(item))
 
     def inc_50(self, ret_this, ret_last, threshold, r_threshold):
         """大幅增盈
@@ -283,4 +283,3 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
 
 if __name__ == "__main__":
     g = GenFiance(3, '000001', '平安银行')
-    g.scan()
