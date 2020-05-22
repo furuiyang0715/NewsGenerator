@@ -7,6 +7,8 @@ cf = configparser.ConfigParser()
 thisdir = os.path.dirname(__file__)
 cf.read(os.path.join(thisdir, '.conf'))
 
+
+
 # datacenter
 DC_HOST = env.get("DC_HOST", cf.get('dc', 'DC_HOST'))
 DC_PORT = int(env.get("DC_PORT", cf.get('dc', 'DC_PORT')))

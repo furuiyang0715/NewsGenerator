@@ -1,6 +1,7 @@
 import logging
 import pymysql
 from pymysql.cursors import DictCursor
+from utils.sql_parse import sql_parse
 from DBUtils.PooledDB import PooledDB
 
 
@@ -20,15 +21,23 @@ class PyMysqlPoolBase(object):
                  port,
                  user,
                  password,
-                 db=None):
+                 db=None, init=True):
         self.db_host = host
         self.db_port = int(port)
         self.user = user
         self.password = str(password)
         self.db = db
-        self.connection = self._getConn()
-        self.cursor = self.connection.cursor()
+        self.connection = None
+        self.cursor = None
+        if init:
+            self.init
 
+
+    @property
+    def init(self):
+        self._getConn
+
+    @property
     def _getConn(self):
         """
         @summary: 静态方法，从连接池中取出连接
@@ -46,7 +55,8 @@ class PyMysqlPoolBase(object):
                              use_unicode=True,
                              charset="utf8",
                              cursorclass=DictCursor)
-        return _pool.connection()
+        self.connection = _pool.connection()
+        self.cursor = self.connection.cursor()
 
     def _exec_sql(self, sql, param=None):
         if param is None:
@@ -64,16 +74,19 @@ class PyMysqlPoolBase(object):
         """
         return self._exec_sql(sql, params)
 
+    @sql_parse
     def select_all(self, sql, params=None):
         self.cursor.execute(sql, params)
         results = self.cursor.fetchall()
         return results
 
+    @sql_parse
     def select_many(self, sql, params=None, size=1):
         self.cursor.execute(sql, params)
         results = self.cursor.fetchmany(size)
         return results
 
+    @sql_parse
     def select_one(self, sql, params=None):
         self.cursor.execute(sql, params)
         result = self.cursor.fetchone()
