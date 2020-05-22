@@ -56,13 +56,13 @@ class PyMysqlPoolBase(object):
                              charset="utf8",
                              cursorclass=DictCursor)
         self.connection = _pool.connection()
-        self.cursor = self.connection.cursor()
 
     def _exec_sql(self, sql, param=None):
-        if param is None:
-            count = self.cursor.execute(sql)
-        else:
-            count = self.cursor.execute(sql, param)
+        with self.connection.cursor() as cursor:
+            if param is None:
+                count = cursor.execute(sql)
+            else:
+                count = cursor.execute(sql, param)
         return count
 
     def insert(self, sql, params=None):
@@ -76,20 +76,23 @@ class PyMysqlPoolBase(object):
 
     @sql_parse
     def select_all(self, sql, params=None):
-        self.cursor.execute(sql, params)
-        results = self.cursor.fetchall()
+        with self.connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            results = cursor.fetchall()
         return results
 
     @sql_parse
     def select_many(self, sql, params=None, size=1):
-        self.cursor.execute(sql, params)
-        results = self.cursor.fetchmany(size)
+        with self.connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            results = cursor.fetchmany(size)
         return results
 
     @sql_parse
     def select_one(self, sql, params=None):
-        self.cursor.execute(sql, params)
-        result = self.cursor.fetchone()
+        with self.connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            result = cursor.fetchone()
         return result
 
     def insert_many(self, sql, values):
@@ -99,7 +102,8 @@ class PyMysqlPoolBase(object):
         @param values:要插入的记录数据tuple(tuple)/list[list]
         @return: count 受影响的行数
         """
-        count = self.cursor.executemany(sql, values)
+        with self.connection.cursor() as cursor:
+            count = cursor.executemany(sql, values)
         return count
 
     def update(self, sql, param=None):
@@ -143,5 +147,4 @@ class PyMysqlPoolBase(object):
             self.end('commit')
         else:
             self.end('rollback')
-        self.cursor.close()
         self.connection.close()
