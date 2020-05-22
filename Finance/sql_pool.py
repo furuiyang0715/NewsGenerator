@@ -1,7 +1,6 @@
 import logging
 import pymysql
 from pymysql.cursors import DictCursor
-from utils.sql_parse import sql_parse
 from DBUtils.PooledDB import PooledDB
 
 
@@ -73,21 +72,18 @@ class PyMysqlPoolBase(object):
         """
         return self._exec_sql(sql, params)
 
-    @sql_parse
     def select_all(self, sql, params=None):
         with self.connection.cursor() as cursor:
             cursor.execute(sql, params)
             results = cursor.fetchall()
         return results
 
-    @sql_parse
     def select_many(self, sql, params=None, size=1):
         with self.connection.cursor() as cursor:
             cursor.execute(sql, params)
             results = cursor.fetchmany(size)
         return results
 
-    @sql_parse
     def select_one(self, sql, params=None):
         with self.connection.cursor() as cursor:
             cursor.execute(sql, params)
