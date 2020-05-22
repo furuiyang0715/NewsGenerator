@@ -33,6 +33,41 @@ class GenFiance(NewsBase):
             7: "增亏",
             8: '大幅增亏',
         }
+        self.fields = [
+            'EndDate',    # 最新一季的季度节点时间
+            'InfoPublDate',  # 最新一季季度节点时间对应的发布时间
+            'CompanyCode',   # 公司代码
+            'SecuCode',  # 证券代码
+            'SecuAbbr',  # 证券简称
+            'ChangeType',  # 新闻类型(1大幅增盈, 2增盈, 3减盈, 4由盈转亏, 5由亏转盈, 6减亏, 7增亏, 8大幅增亏)
+            'NPParentCompanyOwners',  # 母公司净利润
+            'Title',  # 生成文章标题
+            'Content',  # 生成文章正文
+        ]
+
+    def _create_table(self):
+        client = self._init_pool(self.product_cfg)
+        # 联合唯一主键： EndDate, CompanyCode
+        sql = '''
+        CREATE TABLE IF NOT EXISTS `news_generate_finance` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `EndDate` datetime NOT NULL COMMENT '最近发布的截止日期',
+          `InfoPublDate` datetime NOT NULL COMMENT '最近发布的信息发布日期',
+          `CompanyCode` int(11) NOT NULL COMMENT '公司代码',
+          `SecuCode` varchar(10) DEFAULT NULL COMMENT '证券代码', 
+          `SecuAbbr` varchar(100) DEFAULT NULL COMMENT '证券简称',
+          `ChangeType` int NOT NULL COMMENT '生成新闻类型(1大幅增盈, 2增盈, 3减盈, 4由盈转亏, 5由亏转盈, 6减亏, 7增亏, 8大幅增亏)', 
+          `NPParentCompanyOwners` decimal(19,4) DEFAULT NULL COMMENT '归属于母公司所有者的净利润', 
+          `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题',
+          `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
+          `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
+          `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+           PRIMARY KEY (`id`),
+           UNIQUE KEY `un2` (`EndDate`, `CompanyCode`) USING BTREE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='深交所融资融券标的证券历史清单';
+        '''
+        client.insert(sql)
+        client.dispose()
 
     def get_quarter_info(self, quarter: datetime.datetime):
         juyuan = self._init_pool(self.juyuan_cfg)
@@ -158,13 +193,13 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         # 指标参数也保留在生成数据库中
         item['NPParentCompanyOwners'] = ret_this.get("NPParentCompanyOwners")
         title = title_format.format(self.secu_addr, quarter_info, this_net_profit, threshold)
-        item['title'] = title
+        item['Title'] = title
         content = content_format.format(self.secu_addr, quarter_info, self.secu_addr, quarter_info,
                                         this_operating_revenue, r_threshold,
                                         this_net_profit, threshold,
                                         this_basic_EPS,
                                         last_net_profit, last_basic_EPS)
-        item['content'] = content
+        item['Content'] = content
         logger.info("\n" + pprint.pformat(item))
 
     def inc_50(self, ret_this, ret_last, threshold, r_threshold):
@@ -263,6 +298,11 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
                          + '下跌{}%,净利润{}元, 同期下跌{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'
         change_type = 8
         self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
+
+    def quarters_diff(self, end_date, last_end_date):
+        """判断同一个季度的几次发布是否指标数据差距过大 以 20% 为阈值"""
+
+        pass
 
 
 if __name__ == "__main__":

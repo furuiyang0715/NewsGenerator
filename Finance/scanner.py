@@ -51,6 +51,7 @@ and InfoPublDate >= '{}' and InfoPublDate <= '{}'; '''.format(fields_str, self.s
             # step1 判断最新一次生成的数据是否符合条件
             code_instance.diff_quarters(end_date, last_end_date)
             # TODO step2 判断同一个季度的几次发布是否指标数据差距过大 以 20% 为阈值
+            code_instance.quarters_diff(end_date, last_end_date)
 
 
 if __name__ == "__main__":
