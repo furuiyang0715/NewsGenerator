@@ -55,6 +55,9 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         logger.info("本期: \n{}\n".format(pprint.pformat(ret_this)))
         logger.info("上期: \n{}\n".format(pprint.pformat(ret_last)))
 
+        if not ret_this or not ret_last:
+            return
+
         # # [临时]拦截数据进行测试
         # ret_last = {}
         # ret_this = {}
