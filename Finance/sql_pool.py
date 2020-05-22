@@ -32,7 +32,6 @@ class PyMysqlPoolBase(object):
         if init:
             self.init
 
-
     @property
     def init(self):
         self._getConn
@@ -44,9 +43,9 @@ class PyMysqlPoolBase(object):
         @return MySQLdb.connection
         """
         if PyMysqlPoolBase._pool is None:
-            _pool = PooledDB(creator=pymysql,
-                             mincached=1,
-                             maxcached=20,
+            _pool = PooledDB(creator=pymysql,    # 用以链接数据库的模块
+                             mincached=1,        # 初始化时，连接池中至少创建的空闲链接 0 表示不创建
+                             maxcached=20,       # 链接池中最多闲置的链接，0和None不限制
                              host=self.db_host,
                              port=self.db_port,
                              user=self.user,
