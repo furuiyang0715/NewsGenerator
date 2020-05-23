@@ -50,13 +50,19 @@ and InfoPublDate >= '{}' and InfoPublDate <= '{}'; '''.format(fields_str, self.s
             else:
                 _map[company_code].append(r)
         # 在同一天发布的 IfAdjusted 既有 1 又有 2 的情况下 使用 1 的数据
-        print(pprint.pformat(_map))
-        sys.exit(0)
+        # print(pprint.pformat(_map))
 
-        for r in ret:
-            logger.info("\n{}".format(pprint.pformat(r)))
-            # 根据公司代码获取证券代码、证券简称以及聚源内部编码
-            company_code = r.get("CompanyCode")
+        for company_code, results in _map.items():
+            # print(company_code, len(results))
+            if len(results) == 1:
+                r = results[0]
+            elif len(results) == 2:
+                for one in results:
+                    if one.get("IfAdjusted") == 1:
+                        r = one
+            else:
+                raise
+            logger.info("{} >> {}".format(company_code, r))
             _info = self.get_more_info_by_companycode(company_code)
             secu_code, secu_abbr, inner_code = _info.get("SecuCode"), _info.get("SecuAbbr"), _info.get("InnerCode")
             logger.info("证券代码: {}, 证件简称: {}, 聚源内部编码: {}".format(secu_code, secu_abbr, inner_code))
@@ -70,7 +76,7 @@ and InfoPublDate >= '{}' and InfoPublDate <= '{}'; '''.format(fields_str, self.s
             # step1 判断最新一次生成的数据是否符合条件
             code_instance.diff_quarters(end_date, last_end_date)
             # TODO step2 判断同一个季度的几次发布是否指标数据差距过大 以 20% 为阈值
-            code_instance.quarters_diff(end_date, last_end_date)
+            # code_instance.quarters_diff(end_date, last_end_date)
 
 
 if __name__ == "__main__":

@@ -87,8 +87,8 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         """获取两个季度的数据库信息 进行对比以及指标计算 """
         # 从数据库中获取到上一期的值 和 这一期的值, 均是原始数据
         ret_this, ret_last = self.get_quarter_info(_quarter_this), self.get_quarter_info(_quarter_last)
-        logger.info("本期: \n{}\n".format(pprint.pformat(ret_this)))
-        logger.info("上期: \n{}\n".format(pprint.pformat(ret_last)))
+        logger.debug("本期: \n{}\n".format(pprint.pformat(ret_this)))
+        logger.debug("上期: \n{}\n".format(pprint.pformat(ret_last)))
 
         if not ret_this or not ret_last:
             return
@@ -100,12 +100,12 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         # 计算营业额的阈值 是根据原始数据计算出的值
         operatingrevenue_this, operatingrevenue_last = ret_this.get("OperatingRevenue"), ret_last.get("OperatingRevenue")
         r_threshold = (operatingrevenue_this - operatingrevenue_last) / operatingrevenue_last
-        logger.info("营业额同比计算值: {}".format(r_threshold))
+        logger.debug("营业额同比计算值: {}".format(r_threshold))
 
         # 计算触发条件 净利润的阈值 是根据原始数据计算出的值
         netprofit_this, netprofit_last = ret_this.get("NPParentCompanyOwners"), ret_last.get("NPParentCompanyOwners")
         threshold = (netprofit_this - netprofit_last) / netprofit_last
-        logger.info("归属于母公司净利润同比计算值: {}".format(threshold))
+        logger.debug("归属于母公司净利润同比计算值: {}".format(threshold))
 
         # 指标触发条件判断
         if netprofit_this > 0 and netprofit_last > 0:
