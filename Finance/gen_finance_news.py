@@ -67,6 +67,7 @@ class GenFiance(NewsBase):
           `NPParentCompanyOwners` decimal(19,4) DEFAULT NULL COMMENT '归属于母公司所有者的净利润', 
           `ChangePercActual` decimal(20,6) DEFAULT NULL COMMENT '实际涨跌幅(%)',
           `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题',
+          `SourceIds` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '聚源数据源id',
           `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
           `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
           `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -80,7 +81,7 @@ class GenFiance(NewsBase):
     def get_quarter_info(self, quarter: datetime.datetime):
         juyuan = self._init_pool(self.juyuan_cfg)
         sql = '''
-select InfoPublDate, EndDate, IfMerged, IfAdjusted, NPParentCompanyOwners, OperatingRevenue, BasicEPS \
+select id, InfoPublDate, EndDate, IfMerged, IfAdjusted, NPParentCompanyOwners, OperatingRevenue, BasicEPS \
 from {} where CompanyCode={} and IfMerged=1 \
 and NetProfit is not NULL and OperatingRevenue is not null and BasicEPS is not null \
 and EndDate = '{}' and IfAdjusted in (1,2) \
@@ -202,6 +203,7 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         item['NPParentCompanyOwners'] = ret_this.get("NPParentCompanyOwners")
         title = title_format.format(self.secu_addr, quarter_info, this_net_profit, threshold)
         item['Title'] = title
+        item["SourceIds"] = ",".join(sorted([str(ret_this.get("id")), str(ret_last.get("id"))]))
         content = content_format.format(self.secu_addr, quarter_info, self.secu_addr, quarter_info,
                                         this_operating_revenue, r_threshold,
                                         this_net_profit, threshold,
@@ -220,10 +222,10 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
             logger.debug(_ret)
             change_percactual = _ret.get("ChangePercActual")
             item['ChangePercActual'] = change_percactual
+        logger.info("\n" + pprint.pformat(item))
         target_client = self._init_pool(self.product_cfg)
         self._save(target_client, item, self.target_table, self.fields)
         target_client.dispose()
-        # logger.info("\n" + pprint.pformat(item))
 
     def inc_50(self, ret_this, ret_last, threshold, r_threshold):
         """大幅增盈
