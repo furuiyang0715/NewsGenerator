@@ -7,15 +7,20 @@ from Finance.base import NewsBase, logger
 
 
 class GenFiance(NewsBase):
-    def __init__(self, company_code,
-                 secu_code, secu_abbr,
+    def __init__(self,
+                 company_code,
+                 secu_code,
+                 secu_abbr,
+                 inner_code,
                  ):
         super(GenFiance, self).__init__()
         self.company_code = company_code
         self.secu_code = secu_code
         self.secu_addr = secu_abbr
+        self.inner_code = inner_code
 
         self.source_table = 'LC_IncomeStatementAll'
+        self.target_table = 'news_generate_finance'
 
         self.quarter_map = {
             3: "一",
@@ -41,15 +46,17 @@ class GenFiance(NewsBase):
             'SecuAbbr',  # 证券简称
             'ChangeType',  # 新闻类型(1大幅增盈, 2增盈, 3减盈, 4由盈转亏, 5由亏转盈, 6减亏, 7增亏, 8大幅增亏)
             'NPParentCompanyOwners',  # 母公司净利润
+            'ChangePercActual', # 实际涨跌幅
             'Title',  # 生成文章标题
             'Content',  # 生成文章正文
         ]
+        self._create_table()
 
     def _create_table(self):
         client = self._init_pool(self.product_cfg)
         # 联合唯一主键： EndDate, CompanyCode
         sql = '''
-        CREATE TABLE IF NOT EXISTS `news_generate_finance` (
+        CREATE TABLE IF NOT EXISTS `{}` (
           `id` int(11) NOT NULL AUTO_INCREMENT,
           `EndDate` datetime NOT NULL COMMENT '最近发布的截止日期',
           `InfoPublDate` datetime NOT NULL COMMENT '最近发布的信息发布日期',
@@ -58,6 +65,7 @@ class GenFiance(NewsBase):
           `SecuAbbr` varchar(100) DEFAULT NULL COMMENT '证券简称',
           `ChangeType` int NOT NULL COMMENT '生成新闻类型(1大幅增盈, 2增盈, 3减盈, 4由盈转亏, 5由亏转盈, 6减亏, 7增亏, 8大幅增亏)', 
           `NPParentCompanyOwners` decimal(19,4) DEFAULT NULL COMMENT '归属于母公司所有者的净利润', 
+          `ChangePercActual` decimal(20,6) DEFAULT NULL COMMENT '实际涨跌幅(%)',
           `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题',
           `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
           `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
@@ -65,7 +73,7 @@ class GenFiance(NewsBase):
            PRIMARY KEY (`id`),
            UNIQUE KEY `un2` (`EndDate`, `CompanyCode`) USING BTREE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='深交所融资融券标的证券历史清单';
-        '''
+        '''.format(self.target_table)
         client.insert(sql)
         client.dispose()
 
@@ -200,7 +208,22 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
                                         this_basic_EPS,
                                         last_net_profit, last_basic_EPS)
         item['Content'] = content
-        logger.info("\n" + pprint.pformat(item))
+        # 从 stk_quot_idx 中获取涨跌幅(ChangePercActual)
+        # 根据 InnerCode 对 ChangePercActual 进行关联
+        sql = '''
+        SELECT Date, InnerCode, ChangePercActual from stk_quot_idx WHERE InnerCode={} ORDER BY Date desc LIMIT 1;
+        '''.format(self.inner_code)
+        dc_client = self._init_pool(self.dc_cfg)
+        _ret = dc_client.select_one(sql)
+        dc_client.dispose()
+        if _ret:
+            logger.debug(_ret)
+            change_percactual = _ret.get("ChangePercActual")
+            item['ChangePercActual'] = change_percactual
+        target_client = self._init_pool(self.product_cfg)
+        self._save(target_client, item, self.target_table, self.fields)
+        target_client.dispose()
+        # logger.info("\n" + pprint.pformat(item))
 
     def inc_50(self, ret_this, ret_last, threshold, r_threshold):
         """大幅增盈
@@ -303,7 +326,3 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         """判断同一个季度的几次发布是否指标数据差距过大 以 20% 为阈值"""
 
         pass
-
-
-if __name__ == "__main__":
-    g = GenFiance(3, '000001', '平安银行')

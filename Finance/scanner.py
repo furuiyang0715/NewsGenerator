@@ -72,7 +72,7 @@ and InfoPublDate >= '{}' and InfoPublDate <= '{}'; '''.format(fields_str, self.s
             last_end_date = datetime.datetime(end_date.year - 1, end_date.month, end_date.day)
             logger.info("本条记录的季度时间节点是{}, 去年同期的时间节点是{}".format(end_date, last_end_date))
             # 实例化一个 GenFiance 类 需要 company_code, secu_code, secu_abbr 三个参数
-            code_instance = GenFiance(company_code, secu_code, secu_abbr)
+            code_instance = GenFiance(company_code, secu_code, secu_abbr, inner_code)
             # step1 判断最新一次生成的数据是否符合条件
             code_instance.diff_quarters(end_date, last_end_date)
             # TODO step2 判断同一个季度的几次发布是否指标数据差距过大 以 20% 为阈值
