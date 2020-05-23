@@ -19,10 +19,8 @@ class Scanner(NewsBase):
         ret = self.juyuan.select_one(sql, company_code)
         return ret
 
-    def scan(self):
+    def scan(self, _today, _now):
         """不断扫描数据库 找出发布时间等于扫描时间的记录"""
-        _today = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)
-        _now = datetime.datetime.now()
         # 初始化连接池
         self.juyuan = self._init_pool(self.juyuan_cfg)
 
