@@ -54,7 +54,7 @@ class GenFiance(NewsBase):
 
     def _create_table(self):
         client = self._init_pool(self.product_cfg)
-        # 联合唯一主键： EndDate, CompanyCode
+        # 联合唯一主键： CompanyCode, EndDate, InfoPublDate
         sql = '''
         CREATE TABLE IF NOT EXISTS `{}` (
           `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -72,7 +72,7 @@ class GenFiance(NewsBase):
           `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
           `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
            PRIMARY KEY (`id`),
-           UNIQUE KEY `un2` (`EndDate`, `CompanyCode`) USING BTREE
+           UNIQUE KEY `un2` (`CompanyCode`, `EndDate`, `InfoPublDate`) USING BTREE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='深交所融资融券标的证券历史清单';
         '''.format(self.target_table)
         client.insert(sql)
@@ -153,7 +153,7 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         return ret
 
     def re_decimal_data(self, data):
-        """一般小数保留里两位"""
+        """一般小数保留前两位"""
         ret = float("%.2f" % data)
         return ret
 
@@ -223,9 +223,34 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
             change_percactual = _ret.get("ChangePercActual")
             item['ChangePercActual'] = change_percactual
         logger.info("\n" + pprint.pformat(item))
+
+        # 检查是否已经存在数据 与已存在值的偏差
         target_client = self._init_pool(self.product_cfg)
-        self._save(target_client, item, self.target_table, self.fields)
+        self.check_exist_and_deviation(item, target_client)
         target_client.dispose()
+
+    def check_exist_and_deviation(self, item, client):
+        sql = '''select * from {} where CompanyCode = {} and EndDate = '{}'; 
+        '''.format(self.target_table, item.get("CompanyCode"), item.get("EndDate"))
+        _exist = client.select_one(sql)
+        if item and _exist:
+            _new_data = item.get("NPParentCompanyOwners")
+            _exist_data = _exist.get("NPParentCompanyOwners")
+            logger.debug(_exist_data)
+            logger.debug(_new_data)
+            deviation = abs((_new_data - _exist_data) / _exist_data)
+            logger.info("与已经存在数据的偏差为 {}".format(deviation))
+            if deviation >= 0.2:    # 偏差大于 20% 的发布
+                # 调整 content  的发布内容
+                deviation = self.re_percent_data(deviation)
+                content = item.get("Content") + "注:本次为会计调整披露, 该公司净利润数据本次披露较第一次披露变动幅度为{}%，前值为{}".format(
+                    deviation, _exist_data.get("NPParentCompanyOwners"))
+                item["Content"] = content
+                self._save(client, item, self.target_table, self.fields)
+            else:
+                logger.info("两次发布的偏差未超过 20%, 不发布")
+        else:   # 首次发布
+            self._save(client, item, self.target_table, self.fields)
 
     def inc_50(self, ret_this, ret_last, threshold, r_threshold):
         """大幅增盈
@@ -323,8 +348,3 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
                          + '下跌{}%,净利润{}元, 同期下跌{}%。基本每股收益{}元，上年同期业绩净利润{}元，基本每股收益{}元。'
         change_type = 8
         self._process_data(ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type)
-
-    def quarters_diff(self, end_date, last_end_date):
-        """判断同一个季度的几次发布是否指标数据差距过大 以 20% 为阈值"""
-
-        pass
