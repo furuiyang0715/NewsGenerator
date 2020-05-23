@@ -1,5 +1,6 @@
 import datetime
 import pprint
+import sys
 
 from Finance.base import NewsBase, logger
 from Finance.gen_finance_news import GenFiance
@@ -40,6 +41,18 @@ and InfoPublDate >= '{}' and InfoPublDate <= '{}'; '''.format(fields_str, self.s
         logger.info("本次扫描涉及到的查询语句是:\n {}".format(sql))
         ret = self.juyuan.select_all(sql)
         logger.info("本次扫描查询出的个数是:{}".format(len(ret)))
+        # 将查询出的结果按照公司代码进行分组
+        _map = dict()
+        for r in ret:
+            company_code = r.get("CompanyCode")
+            if not _map.get(company_code, None):
+                _map[company_code] = [r, ]
+            else:
+                _map[company_code].append(r)
+        # 在同一天发布的 IfAdjusted 既有 1 又有 2 的情况下 使用 1 的数据
+        print(pprint.pformat(_map))
+        sys.exit(0)
+
         for r in ret:
             logger.info("\n{}".format(pprint.pformat(r)))
             # 根据公司代码获取证券代码、证券简称以及聚源内部编码
