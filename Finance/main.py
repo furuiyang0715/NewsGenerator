@@ -12,5 +12,19 @@ def task():
     s.scan(_today, _now)
 
 
+def history_task():
+    _today = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)
+    _yester_day = _today - datetime.timedelta(days=1)
+    _start = _yester_day - datetime.timedelta(days=180)
+
+    _dt = _start
+    while _dt < _yester_day:
+        s = Scanner()
+        s.scan(_dt, _dt+datetime.timedelta(days=1))
+        _dt = _dt+datetime.timedelta(days=1)
+
+
 if __name__ == "__main__":
-    task()
+    # task()
+
+    history_task()
