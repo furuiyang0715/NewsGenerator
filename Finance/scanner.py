@@ -1,7 +1,4 @@
 import datetime
-import pprint
-import sys
-
 from Finance.base import NewsBase, logger
 from Finance.gen_finance_news import GenFiance
 
@@ -73,10 +70,5 @@ and InfoPublDate >= '{}' and InfoPublDate <= '{}'; '''.format(fields_str, self.s
             logger.info("本条记录的季度时间节点是{}, 去年同期的时间节点是{}".format(end_date, last_end_date))
             # 实例化一个 GenFiance 类 需要 company_code, secu_code, secu_abbr 三个参数
             code_instance = GenFiance(company_code, secu_code, secu_abbr, inner_code)
-            # step1 判断最新一次生成的数据是否符合条件
+            # 判断最新一次生成的数据是否符合条件
             code_instance.diff_quarters(end_date, last_end_date)
-
-
-if __name__ == "__main__":
-    s = Scanner()
-    s.scan()

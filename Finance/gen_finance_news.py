@@ -46,7 +46,7 @@ class GenFiance(NewsBase):
             'SecuAbbr',  # 证券简称
             'ChangeType',  # 新闻类型(1大幅增盈, 2增盈, 3减盈, 4由盈转亏, 5由亏转盈, 6减亏, 7增亏, 8大幅增亏)
             'NPParentCompanyOwners',  # 母公司净利润
-            'ChangePercActual', # 实际涨跌幅
+            'ChangePercActual',  # 实际涨跌幅
             'Title',  # 生成文章标题
             'Content',  # 生成文章正文
         ]
@@ -238,13 +238,14 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
             _exist_data = _exist.get("NPParentCompanyOwners")
             logger.debug(_exist_data)
             logger.debug(_new_data)
+            logger.debug(self.re_money_data(_exist_data))
             deviation = abs((_new_data - _exist_data) / _exist_data)
             logger.info("与已经存在数据的偏差为 {}".format(deviation))
             if deviation >= 0.2:    # 偏差大于 20% 的发布
-                # 调整 content  的发布内容
                 deviation = self.re_percent_data(deviation)
+                _exist_data = self.re_money_data(_exist_data)
                 content = item.get("Content") + "注:本次为会计调整披露, 该公司净利润数据本次披露较第一次披露变动幅度为{}%，前值为{}".format(
-                    deviation, _exist_data.get("NPParentCompanyOwners"))
+                    deviation, _exist_data)
                 item["Content"] = content
                 self._save(client, item, self.target_table, self.fields)
             else:
