@@ -82,7 +82,7 @@ and InfoPublDate >= '{}' and InfoPublDate < '{}'; '''.format(fields_str, self.so
             company_code = int(_key.split("_")[0])
             logger.info("{} >> {}".format(company_code, r))
             if company_code not in company_codes:
-                logger.warning("财务咨询生成仅仅针对 A 股")
+                logger.warning("财务资讯生成仅仅针对 A 股")
                 continue
 
             _info = self.get_more_info_by_companycode(company_code)
@@ -99,9 +99,9 @@ and InfoPublDate >= '{}' and InfoPublDate < '{}'; '''.format(fields_str, self.so
             code_instance.diff_quarters(end_date, last_end_date)
 
 
-if __name__ == "__main__":
-    s = Scanner()
-    _start = datetime.datetime(2020, 5, 22)
-    _end = datetime.datetime(2020, 5, 23)
-
-    s.scan(_start, _end)
+# if __name__ == "__main__":
+#     s = Scanner()
+#     _start = datetime.datetime(2020, 5, 22)
+#     _end = datetime.datetime(2020, 5, 23)
+#
+#     s.scan(_start, _end)

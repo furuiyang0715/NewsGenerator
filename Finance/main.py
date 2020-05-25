@@ -32,6 +32,6 @@ def history_task():
 
 
 if __name__ == "__main__":
-    # task()
+    task()
 
-    history_task()
+    # history_task()
