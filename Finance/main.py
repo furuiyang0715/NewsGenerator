@@ -1,7 +1,11 @@
 import datetime
+import os
 import sys
 
+from apscheduler.schedulers.blocking import BlockingScheduler
+
 sys.path.append("./../")
+from Finance.base import logger
 from Finance.scanner import Scanner
 
 
@@ -31,7 +35,21 @@ def history_task():
     print(error_list)
 
 
-if __name__ == "__main__":
-    task()
+# if __name__ == "__main__":
+#     task()
+#
+#     # history_task()
 
-    # history_task()
+
+if __name__ == "__main__":
+    scheduler = BlockingScheduler()
+    task()
+    scheduler.add_job(task, 'interval', minutes=10, max_instances=10, id="diff_task")
+    logger.info('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
+    try:
+        scheduler.start()
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    except Exception as e:
+        logger.info(f"本次任务执行出错{e}")
+        sys.exit(0)

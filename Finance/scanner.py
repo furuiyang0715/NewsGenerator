@@ -1,6 +1,7 @@
 import datetime
 import pprint
 import sys
+import traceback
 
 from Finance.base import NewsBase, logger
 from Finance.gen_finance_news import GenFiance
@@ -23,6 +24,13 @@ class Scanner(NewsBase):
         return ret
 
     def scan(self, _today, _now):
+        try:
+            self._scan(_today, _now)
+        except:
+            self.ding("金融资讯生成有误..")
+            traceback.print_exc()
+
+    def _scan(self, _today, _now):
         """不断扫描数据库 找出发布时间等于扫描时间的记录"""
         # 初始化连接池
         self.juyuan = self._init_pool(self.juyuan_cfg)
