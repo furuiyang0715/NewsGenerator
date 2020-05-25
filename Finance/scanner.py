@@ -55,9 +55,13 @@ and InfoPublDate >= '{}' and InfoPublDate < '{}'; '''.format(fields_str, self.so
                 _map[_key] = [r, ]
             else:
                 _map[_key].append(r)
-        # 在同一天发布的 IfAdjusted 既有 1 又有 2 的情况下 使用 1 的数据
+        # 同一个季度节点的数据 取最早发布的一个
+        # 在同一天发布的, IfAdjusted 既有 1 又有 2 的情况下 使用 1 的数据
+        # 在以一天内的时间为起止的情况下, 均为在第二种情况
         # print(pprint.pformat(_map))
-        # sys.exit(0)
+
+        # 查询出全部的 A 股公司代码
+        company_codes = set(self.total_company_codes().keys())
 
         for _key, results in _map.items():
             r = None
@@ -71,10 +75,16 @@ and InfoPublDate >= '{}' and InfoPublDate < '{}'; '''.format(fields_str, self.so
                 raise
 
             if not r:
+                logger.warning(len(results))
+                logger.warning(pprint.pformat(results))
                 raise
 
-            company_code = _key.split("_")[0]
+            company_code = int(_key.split("_")[0])
             logger.info("{} >> {}".format(company_code, r))
+            if company_code not in company_codes:
+                logger.warning("财务咨询生成仅仅针对 A 股")
+                continue
+
             _info = self.get_more_info_by_companycode(company_code)
             secu_code, secu_abbr, inner_code = _info.get("SecuCode"), _info.get("SecuAbbr"), _info.get("InnerCode")
             logger.info("证券代码: {}, 证件简称: {}, 聚源内部编码: {}".format(secu_code, secu_abbr, inner_code))
@@ -87,3 +97,11 @@ and InfoPublDate >= '{}' and InfoPublDate < '{}'; '''.format(fields_str, self.so
             code_instance = GenFiance(company_code, secu_code, secu_abbr, inner_code)
             # 判断最新一次生成的数据是否符合条件
             code_instance.diff_quarters(end_date, last_end_date)
+
+
+if __name__ == "__main__":
+    s = Scanner()
+    _start = datetime.datetime(2020, 5, 22)
+    _end = datetime.datetime(2020, 5, 23)
+
+    s.scan(_start, _end)
