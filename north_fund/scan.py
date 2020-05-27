@@ -1,6 +1,6 @@
 import datetime
 
-from Finance.base import NewsBase
+from base import NewsBase
 
 
 class NorthFund(NewsBase):
@@ -8,7 +8,7 @@ class NorthFund(NewsBase):
         super(NorthFund, self).__init__()
         self.source_table = 'hkland_flow'
         self.target_table = 'news_generate_flownorth'
-        self.fields = ['Date', 'Threshold', 'Title', "Content", "DateTime"]
+        self.fields = ['Date', 'Threshold', 'Title', "Content", "DateTime", 'ShHkFlow', 'SzHkFlow']
         # 阈值 50亿  80亿  120亿
         self.thre1 = 50*10**4
         self.thre2 = 80*10**4
@@ -22,6 +22,8 @@ class NorthFund(NewsBase):
           `Date` datetime NOT NULL COMMENT '日期', 
           `Threshold` decimal(19,0) NOT NULL COMMENT '阈值(单位:万)', 
           `DateTime` datetime NOT NULL COMMENT '达到阈值的分钟时间点', 
+          `ShHkFlow` decimal(19,4) NOT NULL COMMENT '沪股通/港股通(沪)当日资金流向(万）', 
+          `SzHkFlow` decimal(19,4) NOT NULL COMMENT '深股通/港股通(深)当日资金流向(万）',
           `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题', 
           `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',           
           `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
@@ -87,6 +89,8 @@ class NorthFund(NewsBase):
         item['Title'] = title
         item['Content'] = content
         item['DateTime'] = date_time
+        item['ShHkFlow'] = shhkflow
+        item['SzHkFlow'] = szhkflow
         return item
 
     def get_final_data(self, end_dt):
@@ -122,6 +126,8 @@ class NorthFund(NewsBase):
         item['Title'] = title
         item['Content'] = content
         item['DateTime'] = date_time
+        item['ShHkFlow'] = shhkflow
+        item['SzHkFlow'] = szhkflow
         return item
 
     def start(self):
@@ -171,4 +177,4 @@ class NorthFund(NewsBase):
 if __name__ == "__main__":
     north = NorthFund()
     north.start()
-    # north.history()
+    north.history()
