@@ -171,4 +171,4 @@ class NorthFund(NewsBase):
 if __name__ == "__main__":
     north = NorthFund()
     north.start()
-    north.history()
+    # north.history()
