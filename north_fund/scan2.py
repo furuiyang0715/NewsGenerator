@@ -14,6 +14,25 @@ class NorthFund(NewsBase):
         self.thre2 = 2*10**4
         self.thre3 = 3*10**4
 
+    def _create_table(self):
+        client = self._init_pool(self.product_cfg)
+        sql = '''
+        CREATE TABLE IF NOT EXISTS `{}` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `Date` datetime NOT NULL COMMENT '日期', 
+          `Threshold` decimal(19,4) NOT NULL COMMENT '阈值(单位:万)', 
+          `DateTime` datetime NOT NULL COMMENT '达到阈值的分钟时间点', 
+          `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题', 
+          `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',           
+          `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
+          `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+           PRIMARY KEY (`id`),
+           UNIQUE KEY `dt_thre` (`Date`, `Threshold`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='北向资金流入资讯生成';
+        '''.format(self.target_table)
+        client.insert(sql)
+        client.dispose()
+
     def re_data2str(self, data):
         data = abs(data)
         # 将万转换为亿
@@ -71,6 +90,7 @@ class NorthFund(NewsBase):
         return item
 
     def start(self):
+        self._create_table()
         # (1) 获取当前的时间点
         _now = datetime.datetime.now()
         # (2) 从当天的开始时间(或者北向资金的开始时间 9 点半)到当前时间之间的全部数据中最大的一只
@@ -82,7 +102,7 @@ class NorthFund(NewsBase):
             if value:
                 item = self.produce(key, value)
                 print(item)
-                # self._save(client, item, self.target_table, self.fields)
+                self._save(client, item, self.target_table, self.fields)
         client.dispose()
 
 
