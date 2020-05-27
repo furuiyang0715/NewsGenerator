@@ -131,7 +131,6 @@ class NorthFund(NewsBase):
         if _now > _end:
             # 入库北向资金当日收盘流入
             item = self.get_final_data(_end)
-            # print(item)
             self._save(client, item, self.target_table, self.fields)
 
         positive, negative = self.fetch_data(_start, _now)
@@ -139,9 +138,28 @@ class NorthFund(NewsBase):
         for key, value in positive.items():
             if value:
                 item = self.produce(key, value)
-                # print(item)
                 self._save(client, item, self.target_table, self.fields)
         client.dispose()
+
+    def history(self):
+        client = self._init_pool(self.product_cfg)
+        s_day = datetime.datetime(2020, 1, 1)
+        e_day = datetime.datetime(2020, 5, 26)
+        _day = s_day
+        while _day <= e_day:
+
+            positive, negative = self.fetch_data(datetime.datetime(_day.year, _day.month, _day.day, 9, 30),
+                                                 datetime.datetime(_day.year, _day.month, _day.day, 15, 0))
+            positive.update(negative)
+            for key, value in positive.items():
+                if value:
+                    item = self.produce(key, value)
+                    self._save(client, item, self.target_table, self.fields)
+
+            item = self.get_final_data( datetime.datetime(_day.year, _day.month, _day.day, 15, 0))
+            self._save(client, item, self.target_table, self.fields)
+
+            _day += datetime.timedelta(days=1)
 
 
 if __name__ == "__main__":
