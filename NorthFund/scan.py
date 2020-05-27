@@ -1,6 +1,12 @@
 import datetime
+import os
+import sys
+import time
 
-from base import NewsBase
+cur_path = os.path.split(os.path.realpath(__file__))[0]
+file_path = os.path.abspath(os.path.join(cur_path, ".."))
+sys.path.insert(0, file_path)
+from base import NewsBase, logger
 
 
 class NorthFund(NewsBase):
@@ -130,9 +136,8 @@ class NorthFund(NewsBase):
         item['SzHkFlow'] = szhkflow
         return item
 
-    def start(self):
+    def start(self, _now):
         self._create_table()
-        _now = datetime.datetime.now()
         _start = datetime.datetime(_now.year, _now.month, _now.day, 9, 30, 0)
         _end = datetime.datetime(_now.year, _now.month, _now.day, 15, 0, 0)
         client = self._init_pool(self.product_cfg)
@@ -175,6 +180,15 @@ class NorthFund(NewsBase):
 
 
 if __name__ == "__main__":
-    north = NorthFund()
-    north.start()
-    north.history()
+    while True:
+        north = NorthFund()
+        _now = datetime.datetime.now()
+        day_start = datetime.datetime(_now.year, _now.month, _now.day, 9, 25, 0)
+        day_end = datetime.datetime(_now.year, _now.month, _now.day, 15, 5, 0)
+        if _now <= day_start or _now >= day_end:
+            logger.info("不在生成时间内 {}".format(_now))
+            time.sleep(30)
+        else:
+            north.start(_now)
+            time.sleep(10)
+
