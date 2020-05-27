@@ -4,14 +4,14 @@ ENV TZ=Asia/Shanghai
 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-RUN mkdir /Finance
+RUN mkdir /NewsGenerator
 
-WORKDIR /Finance
+WORKDIR /NewsGenerator
 
-ADD . /Finance
+ADD . /NewsGenerator
 
-WORKDIR /Finance
+WORKDIR /NewsGenerator
 
 RUN pip install -r requirements.txt -i https://pypi.douban.com/simple
 
-ENTRYPOINT ["python", "main.py"]
+#ENTRYPOINT ["python", "Finance/main.py"]

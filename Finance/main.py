@@ -3,8 +3,9 @@ import os
 import sys
 
 from apscheduler.schedulers.blocking import BlockingScheduler
-
-sys.path.append("./../")
+cur_path = os.path.split(os.path.realpath(__file__))[0]
+file_path = os.path.abspath(os.path.join(cur_path, ".."))
+sys.path.insert(0, file_path)
 from base import logger
 from Finance.scanner import Scanner
 
