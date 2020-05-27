@@ -1,10 +1,9 @@
 import datetime
 import pprint
-import sys
 import traceback
 
-from Finance.base import NewsBase, logger
 from Finance.gen_finance_news import GenFiance
+from base import NewsBase, logger
 
 
 class Scanner(NewsBase):
@@ -105,11 +104,3 @@ and InfoPublDate >= '{}' and InfoPublDate < '{}'; '''.format(fields_str, self.so
             code_instance = GenFiance(company_code, secu_code, secu_abbr, inner_code)
             # 判断最新一次生成的数据是否符合条件
             code_instance.diff_quarters(end_date, last_end_date)
-
-
-# if __name__ == "__main__":
-#     s = Scanner()
-#     _start = datetime.datetime(2020, 5, 22)
-#     _end = datetime.datetime(2020, 5, 23)
-#
-#     s.scan(_start, _end)

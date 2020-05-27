@@ -1,9 +1,7 @@
 import datetime
 import pprint
-import sys
-from decimal import Decimal
 
-from Finance.base import NewsBase, logger
+from base import NewsBase, logger
 
 
 class GenFiance(NewsBase):

@@ -5,7 +5,7 @@ import sys
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 sys.path.append("./../")
-from Finance.base import logger
+from base import logger
 from Finance.scanner import Scanner
 
 
