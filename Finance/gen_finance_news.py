@@ -1,4 +1,5 @@
 import datetime
+import decimal
 import pprint
 
 from base import NewsBase, logger
@@ -106,12 +107,20 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
 
         # 计算营业额的阈值 是根据原始数据计算出的值
         operatingrevenue_this, operatingrevenue_last = ret_this.get("OperatingRevenue"), ret_last.get("OperatingRevenue")
-        r_threshold = (operatingrevenue_this - operatingrevenue_last) / operatingrevenue_last
+        try:
+            r_threshold = (operatingrevenue_this - operatingrevenue_last) / operatingrevenue_last
+        except decimal.DivisionByZero:
+            logger.warning("计算除 0 ")
+            return
         logger.debug("营业额同比计算值: {}".format(r_threshold))
 
         # 计算触发条件 净利润的阈值 是根据原始数据计算出的值
         netprofit_this, netprofit_last = ret_this.get("NPParentCompanyOwners"), ret_last.get("NPParentCompanyOwners")
-        threshold = (netprofit_this - netprofit_last) / netprofit_last
+        try:
+            threshold = (netprofit_this - netprofit_last) / netprofit_last
+        except decimal.DivisionByZero:
+            logger.warning("计算除 0")
+            return
         logger.debug("归属于母公司净利润同比计算值: {}".format(threshold))
 
         # 指标触发条件判断
