@@ -191,4 +191,3 @@ if __name__ == "__main__":
         else:
             north.start(_now)
             time.sleep(10)
-

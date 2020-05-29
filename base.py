@@ -14,7 +14,8 @@ sys.path.append("./../")
 from configs import (SPIDER_MYSQL_HOST, SPIDER_MYSQL_PORT, SPIDER_MYSQL_USER, SPIDER_MYSQL_PASSWORD,
                      SPIDER_MYSQL_DB, PRODUCT_MYSQL_HOST, PRODUCT_MYSQL_PORT, PRODUCT_MYSQL_USER,
                      PRODUCT_MYSQL_PASSWORD, PRODUCT_MYSQL_DB, JUY_HOST, JUY_PORT, JUY_USER, JUY_PASSWD,
-                     JUY_DB, DC_HOST, DC_PORT, DC_USER, DC_PASSWD, DC_DB, SECRET, TOKEN, LOCAL)
+                     JUY_DB, DC_HOST, DC_PORT, DC_USER, DC_PASSWD, DC_DB, SECRET, TOKEN, LOCAL, BG_HOST, BG_PORT,
+                     BG_USER, BG_PASSWD, BG_DB)
 from sql_pool import PyMysqlPoolBase
 
 if LOCAL:
@@ -49,6 +50,15 @@ class NewsBase(object):
         "user": JUY_USER,
         "password": JUY_PASSWD,
         "db": JUY_DB,
+    }
+
+    # 贝格数据库
+    bigdata_cfg = {
+        "host": BG_HOST,
+        "port": BG_PORT,
+        "user": BG_USER,
+        "password": BG_PASSWD,
+        "db": BG_DB,
     }
 
     # 数据中心库
@@ -120,7 +130,6 @@ class NewsBase(object):
 
             else:
                 logger.info("已有数据 {} ".format(to_insert))
-                pass
 
             sql_pool.end()
             return count

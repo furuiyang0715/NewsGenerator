@@ -35,6 +35,12 @@ JUY_USER = env.get("JUY_USER", cf.get('juyuan', 'JUY_USER'))
 JUY_PASSWD = env.get("JUY_PASSWD", cf.get('juyuan', 'JUY_PASSWD'))
 JUY_DB = env.get("JUY_DB", cf.get('juyuan', 'JUY_DB'))
 
+# 贝格
+BG_HOST = env.get("BG_HOST", cf.get('bigdata', 'BG_HOST'))
+BG_PORT = int(env.get("BG_PORT", cf.get('bigdata', 'BG_PORT')))
+BG_USER = env.get("BG_USER", cf.get('bigdata', 'BG_USER'))
+BG_PASSWD = env.get("JBG_PASSWD", cf.get('bigdata', 'BG_PASSWD'))
+BG_DB = env.get("BG_DB", cf.get('bigdata', 'BG_DB'))
 
 # spider
 if LOCAL:
