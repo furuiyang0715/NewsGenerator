@@ -19,6 +19,7 @@ class NorthFund(NewsBase):
         self.thre1 = 50*10**4
         self.thre2 = 80*10**4
         self.thre3 = 120*10**4
+        self.invalid_items = []
 
     def _create_table(self):
         client = self._init_pool(self.product_cfg)
@@ -152,6 +153,32 @@ class NorthFund(NewsBase):
         for key, value in positive.items():
             if value:
                 item = self.produce(key, value)
+
+                if item in self.invalid_items:
+                    continue
+                _threshold = item.get("Threshold")
+                _dt = item.get("DateTime")
+                before_dt = _dt - datetime.timedelta(minutes=5)
+                delete_item = None
+                if _threshold > 0:
+                    sql = '''select * from {} where Date = '{}' \
+                    and DateTime >= '{}' \
+                    and DateTime <= '{}' and Threshold < {} limit 1; 
+                    '''.format(self.target_table, item.get("Date"), before_dt, _dt, _threshold)
+                    delete_item = client.select_one(sql)
+                elif _threshold < 0:
+                    sql = '''select * from {} where Date = '{}' \
+                    and DateTime >= '{}' \
+                    and DateTime <= '{}' and Threshold > {} limit 1; 
+                   '''.format(self.target_table, item.get("Date"), before_dt, _dt, _threshold)
+                    delete_item = client.select_one(sql)
+                if delete_item:
+                    sql = 'delete from {} where id = {}; '.format(self.target_table, delete_item.pop("id"))
+                    client.delete(sql)
+                    logger.warning("删除数据: {}".format(delete_item))
+                    client.end()
+                    self.invalid_items.append(delete_item)
+
                 self._save(client, item, self.target_table, self.fields)
         client.dispose()
         # TODO  select * from news_generate_flownorth where Date = '2020-05-29'\G
@@ -182,6 +209,10 @@ class NorthFund(NewsBase):
 
 
 if __name__ == "__main__":
+    # north = NorthFund()
+    # _now = datetime.datetime.now()
+    # north.start(_now)
+
     while True:
         north = NorthFund()
         _now = datetime.datetime.now()
