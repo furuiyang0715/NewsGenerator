@@ -154,6 +154,8 @@ class NorthFund(NewsBase):
                 item = self.produce(key, value)
                 self._save(client, item, self.target_table, self.fields)
         client.dispose()
+        # TODO  select * from news_generate_flownorth where Date = '2020-05-29'\G
+        # 北向资金正向或者负向在 5 min 内突破了新的阈值 将之前生成的一条新闻覆盖掉
 
     def history(self):
         client = self._init_pool(self.product_cfg)

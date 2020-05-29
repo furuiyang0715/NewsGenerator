@@ -1,8 +1,5 @@
 import datetime
-import pprint
-import traceback
-
-from base import NewsBase
+from base import NewsBase, logger
 
 _today = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)
 
@@ -13,17 +10,35 @@ class OrganizationEvaluation(NewsBase):
         super(OrganizationEvaluation, self).__init__()
         self.source_table = 'rrp_rpt_secu_rat'
         self.idx_table = 'stk_quot_idx'
+        self.target_table = 'news_generate_organization'
         self.day = day
         self.bg_client = None
         self.dc_client = None
+        self.target_client = None
         self.title_format = "{}今日获机构首次评级-{}"
         self.content_format = '{}月{}日{}（{}）获得{}首次评级 - {}，最新收盘价{}，涨幅{}%。'
+        self.fields = ['PubDate',     # 资讯发布时间, 首次评级立即发布, 获多机构买入增持评级, 第二天 9 点发出
+                       'PubType',     # 资讯类型1:首次评级2:获多机构买入增持评级
+                       'SecuCode',    # 证券代码
+                       'SecuAbbr',   # 证券简称
+                       'InnerCode',  # 聚源内部编码
+                       'ComId',     # 撰写机构编码 仅在某机构首次评级时填入
+                       'ComName',   # 撰写机构名称 仅在某机构首次评级时填入
+                       'RatCode',   # 投资评级代码 仅在某机构首次评级时填入
+                       'RatDesc',   # 投资评级描述 仅在某机构首次评级时填入
+                       'Title',    # 生成资讯标题
+                       'Content',  # 生层资讯正文
+                       'Close',  # 收盘价
+                       'ChangePercActual',  # 实际涨跌幅
+                    ]
 
     def __del__(self):
         if self.bg_client:
             self.bg_client.dispose()
         if self.dc_client:
             self.dc_client.dispose()
+        if self.target_client:
+            self.target_client.dispose()
 
     def _bg_init(self):
         self.bg_client = self._init_pool(self.bigdata_cfg)
@@ -31,16 +46,11 @@ class OrganizationEvaluation(NewsBase):
     def _dc_init(self):
         self.dc_client = self._init_pool(self.dc_cfg)
 
+    def _target_init(self):
+        self.target_client = self._init_pool(self.product_cfg)
+
     def get_pub_today(self):
         """发布时间在指定日期的全部数据"""
-        # trd_code  # 证券代码
-        # secu_sht  # 证券简称
-        # pub_dt # 发布日期
-        # com_id   # 撰写机构编码
-        # com_name # 撰写机构名称
-        # rat_code  # 投资评级代码
-        # rat_desc # 投资评级描述
-
         self._bg_init()
         select_fields = 'pub_dt,trd_code,secu_sht, com_id,com_name,rat_code,rat_desc'
         sql = '''select {} from {} where pub_dt = '{}';'''.format(select_fields, self.source_table, self.day)
@@ -66,6 +76,8 @@ class OrganizationEvaluation(NewsBase):
         rat_desc = data.get("rat_desc")
 
         item = dict()
+        item['PubDate'] = self.day
+        item['PubType'] = 1
         item["SecuCode"] = trd_code
         item['SecuAbbr'] = secu_sht
         inner_code = self.get_inner_code_bysecu(trd_code)
@@ -75,7 +87,7 @@ class OrganizationEvaluation(NewsBase):
         item['RatCode'] = rat_code
         item['RatDesc'] = rat_desc
 
-        # 杰瑞股份今日获机构首次评级-买入
+        # eg.杰瑞股份今日获机构首次评级-买入
         # "{}今日获机构首次评级-{}"
         title = self.title_format.format(secu_sht, rat_desc)
         item['Title'] = title
@@ -85,19 +97,54 @@ class OrganizationEvaluation(NewsBase):
         ret = self.dc_client.select_one(sql)
         _close = self.re_decimal_data(ret.get("Close"))
         changepercactual = self.re_decimal_data(ret.get("ChangePercActual"))
-        # 4月12日杰瑞股份（000021）获得申港证券首次评级 - 买入，最新收盘价24.86，涨幅+1.12%。
+        # eg.4月12日杰瑞股份（000021）获得申港证券首次评级 - 买入，最新收盘价24.86，涨幅+1.12%。
         # '{}月{}日{}（{}）获得{}首次评级 - {}，最新收盘价{}，涨幅{}%。'
         content = self.content_format.format(self.day.month, self.day.day, secu_sht, trd_code, com_name, rat_desc, _close, changepercactual)
+        item['Close'] = _close
+        item['ChangePercActual'] = changepercactual
         item['Content'] = content
         return item
+
+    def _create_table(self):
+        sql = '''
+        CREATE TABLE IF NOT EXISTS `{}` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `PubDate` datetime NOT NULL COMMENT '资讯发布时间', 
+          `PubType` int NOT NULL COMMENT '资讯类型1:首次评级2:获多机构买入增持评级',
+          `SecuCode` varchar(10) DEFAULT NULL COMMENT '证券代码',  
+          `SecuAbbr` varchar(100) DEFAULT NULL COMMENT '证券简称', 
+          `InnerCode` int(11) NOT NULL COMMENT '证券内部编码',
+          `ComId` decimal(10,0) NOT NULL COMMENT '发行机构 ID',
+          `ComName` varchar(200) DEFAULT NULL COMMENT '撰写机构名称', 
+          `RatCode` decimal(10,0) DEFAULT NULL COMMENT '投资评级代码',
+          `RatDesc` varchar(50) DEFAULT NULL COMMENT '投资评级描述',
+          `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题', 
+          `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
+          `Close` decimal(20,2) DEFAULT NULL COMMENT '收盘价',
+          `ChangePercActual` decimal(20,6) DEFAULT NULL COMMENT '实际涨跌幅(%)', 
+          `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
+          `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+           PRIMARY KEY (`id`),
+           UNIQUE KEY `un2` (`SecuCode`, `PubDate`, `PubType`, `ComId`) 
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='机构评级资讯生成';
+        '''.format(self.target_table)
+        self._target_init()
+        self.target_client.insert(sql)
+        logger.info("建表成功 ")
 
     def start(self):
         datas = self.get_pub_today()
         self._dc_init()
+        items = []
         for data in datas:
             is_first = self.check_pub_first(data)
             if is_first:
                 item = self.get_item(data)
+                items.append(item)
+        print(">>> ", len(items))
+        if items:
+            self._create_table()
+            self._batch_save(self.target_client, items, self.target_table, self.fields)
 
 
 if __name__ == "__main__":
