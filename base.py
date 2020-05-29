@@ -232,3 +232,9 @@ class NewsBase(object):
             _map[company_code] = (r.get("SecuCode"), r.get("InnerCode"))
 
         return _map
+
+    @staticmethod
+    def re_decimal_data(data):
+        """一般小数保留前两位"""
+        ret = float("%.2f" % data)
+        return ret
