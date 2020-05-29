@@ -1,4 +1,10 @@
 import datetime
+import os
+import sys
+
+cur_path = os.path.split(os.path.realpath(__file__))[0]
+file_path = os.path.abspath(os.path.join(cur_path, ".."))
+sys.path.insert(0, file_path)
 from base import NewsBase, logger
 
 _today = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)
@@ -17,7 +23,7 @@ class OrganizationEvaluation(NewsBase):
         self.target_client = None
         self.title_format = "{}今日获机构首次评级-{}"
         self.content_format = '{}月{}日{}（{}）获得{}首次评级 - {}，最新收盘价{}，涨幅{}%。'
-        self.fields = ['PubDate',     # 资讯发布时间, 首次评级立即发布, 获多机构买入增持评级, 第二天 9 点发出
+        self.fields = ['PubDate',     # 资讯发布时间, 首次评级立即发布; 获多机构买入增持评级, 第二天 9 点发出
                        'PubType',     # 资讯类型1:首次评级2:获多机构买入增持评级
                        'SecuCode',    # 证券代码
                        'SecuAbbr',   # 证券简称
@@ -141,7 +147,6 @@ class OrganizationEvaluation(NewsBase):
             if is_first:
                 item = self.get_item(data)
                 items.append(item)
-        print(">>> ", len(items))
         if items:
             self._create_table()
             self._batch_save(self.target_client, items, self.target_table, self.fields)
