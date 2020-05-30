@@ -207,8 +207,9 @@ class NorthFund(NewsBase):
 
 
 if __name__ == "__main__":
+    # 应该放在循环外生成 否则每次都会去重置 invalid_items
+    north = NorthFund()
     while True:
-        north = NorthFund()
         _now = datetime.datetime.now()
         day_start = datetime.datetime(_now.year, _now.month, _now.day, 9, 25, 0)
         day_end = datetime.datetime(_now.year, _now.month, _now.day, 15, 5, 0)
