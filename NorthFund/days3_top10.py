@@ -1,6 +1,5 @@
 import datetime
 import json
-import pprint
 import struct
 
 from PyAPI.JZpyapi import const
@@ -59,6 +58,8 @@ class Stocks3DaysTop10(NewsBase):
           `id` int(11) NOT NULL AUTO_INCREMENT,
           `Date` datetime NOT NULL COMMENT '日期', 
           `RankInfo` json  NOT NULL COMMENT '三日连续净流入前10个股', 
+          `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题', 
+          `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',           
           `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
           `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
            PRIMARY KEY (`id`),
@@ -94,10 +95,10 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
         )
         for one in rank.row:
             item = {}
-            # logger.info("code: {}".format(one.stock_code))
+            print("code: {}".format(one.stock_code))
             for i in one.data:
                 if i.type == 1:
-                    # logger.info("value: {}".format(struct.unpack("<f", i.value)[0]))
+                    print("value: {}".format(struct.unpack("<f", i.value)[0]))
                     secu_code = one.stock_code[2:]
                     inner_code, secu_abbr = self.get_juyuan_codeinfo(secu_code)
                     _changepercactual = self.get_changepercactual(inner_code)
@@ -124,10 +125,11 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
             value_str = self.re_money_data(v.get("value"))
             content += one_format.format(v.get('secu_abbr'), v.get('secu_code'), changepercactual_str, value_str) + "\n"
 
+        title = '这些个股被主力看好，主力资金3日净流入前十个股'
         print(content)
 
         self._target_init()
-        data = {"Date": self.day, "RankInfo": rank_info, 'Content': content}
+        data = {"Date": self.day, "RankInfo": rank_info, 'Content': content, "Title": title}
         self._save(self.target_client, data, self.target_table, ['Date', "RankInfo"])
 
 
