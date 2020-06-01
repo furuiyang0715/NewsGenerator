@@ -31,15 +31,36 @@ class Stocks3DaysTop10(NewsBase):
         self.day = day
         self.idx_table = 'stk_quot_idx'
         self.dc_client = None
+        self.target_client = None
+        self.target_table = 'news_generate_stocks3daystop10'
 
     def _dc_init(self):
         self.dc_client = self._init_pool(self.dc_cfg)
 
+    def _target_init(self):
+        self.target_client = self._init_pool(self.product_cfg)
+
     def __del__(self):
         if self.dc_client:
             self.dc_client.dispose()
-        # if self.target_client:
-        #     self.target_client.dispose()
+        if self.target_client:
+            self.target_client.dispose()
+
+    def _create_table(self):
+        client = self._init_pool(self.product_cfg)
+        sql = '''
+        CREATE TABLE IF NOT EXISTS `{}` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `Date` datetime NOT NULL COMMENT '日期', 
+          `RankInfo` json  NOT NULL COMMENT '三日连续净流入前10个股', 
+          `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
+          `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+           PRIMARY KEY (`id`),
+           UNIQUE KEY `dt_thre` (`Date`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='三日连续净流入前10个股';
+        '''.format(self.target_table)
+        client.insert(sql)
+        client.dispose()
 
     def get_changepercactual(self, secu_code):
         inner_code = self.get_inner_code_bysecu(secu_code)
@@ -51,6 +72,8 @@ class Stocks3DaysTop10(NewsBase):
         return inner_code, changepercactual
 
     def start(self):
+        self._create_table()
+
         rank_map = {}
         rank_num = 1
         rank = Rank.sync_get_rank_net_purchase_by_code_3_day(
@@ -79,6 +102,9 @@ class Stocks3DaysTop10(NewsBase):
         data = {"Date": self.day, "RankInfo": rank_info}
         # for k, v in data.items():
         #     print(k, ">>", v)
+
+        self._target_init()
+        self._save(self.target_client, data, self.target_table, ['Date', "RankInfo"])
 
 
 if __name__ == "__main__":
