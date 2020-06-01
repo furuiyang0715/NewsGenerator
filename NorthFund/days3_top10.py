@@ -94,10 +94,10 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
         )
         for one in rank.row:
             item = {}
-            logger.info("code: {}".format(one.stock_code))
+            # logger.info("code: {}".format(one.stock_code))
             for i in one.data:
                 if i.type == 1:
-                    logger.info("value: {}".format(struct.unpack("<f", i.value)[0]))
+                    # logger.info("value: {}".format(struct.unpack("<f", i.value)[0]))
                     secu_code = one.stock_code[2:]
                     inner_code, secu_abbr = self.get_juyuan_codeinfo(secu_code)
                     _changepercactual = self.get_changepercactual(inner_code)
@@ -113,12 +113,21 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
                     logger.info(bytes.fromhex(i.value.hex()).decode("utf-8"))
 
         rank_info = json.dumps(rank_map, ensure_ascii=False)
-        data = {"Date": self.day, "RankInfo": rank_info}
+
+        content = '三日主力净买额前十的个股:\n'
+        # eg. 山河药辅（300452）+1.54%，三日主力净买额1200万
+        one_format = '{}（{}）{}%，三日主力净买额{}'
 
         for k, v in rank_map.items():
-            print(k, ">>", v)
+            changepercactual_str = ("+" + str(self.re_decimal_data(v.get("changepercactual")))
+                                    if v.get("changepercactual") > 0 else "-" + str(self.re_decimal_data(v.get("changepercactual"))))
+            value_str = self.re_money_data(v.get("value"))
+            content += one_format.format(v.get('secu_abbr'), v.get('secu_code'), changepercactual_str, value_str) + "\n"
+
+        print(content)
 
         self._target_init()
+        data = {"Date": self.day, "RankInfo": rank_info, 'Content': content}
         self._save(self.target_client, data, self.target_table, ['Date', "RankInfo"])
 
 

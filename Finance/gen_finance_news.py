@@ -149,37 +149,10 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         ret = float("%.2f" % (data * 100))
         return ret
 
-    def re_hundredmillion_data(self, data):
-        """将元转换为亿元 并且保留两位小数"""
-        ret = float("%.2f" % (data / 10**8))
-        return ret
-
-    def re_ten_thousand_data(self, data):
-        """将元转换为万元 并且保留两位小数"""
-        ret = float("%.2f" % (data / 10**4))
-        return ret
-
     def re_decimal_data(self, data):
         """一般小数保留前两位"""
         ret = float("%.2f" % data)
         return ret
-
-    def re_money_data(self, data):
-        """根据元数量的大小将其转换为对应的万元、亿元等
-        """
-        # 保留原始值的符号
-        if data > 0:
-            flag = 1
-        else:
-            flag = -1
-
-        data = abs(data)
-        if 0 <= data < 10 ** 8:   # 小于 1 亿的钱以万为单位
-            data = self.re_ten_thousand_data(data) * flag
-            return "{}万".format(data)
-        else:
-            data = self.re_hundredmillion_data(data) * flag
-            return "{}亿".format(data)
 
     def _process_data(self, ret_this, ret_last, threshold, r_threshold, title_format, content_format, change_type):
         this_end_date = ret_this.get("EndDate")
