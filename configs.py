@@ -42,6 +42,12 @@ BG_USER = env.get("BG_USER", cf.get('bigdata', 'BG_USER'))
 BG_PASSWD = env.get("JBG_PASSWD", cf.get('bigdata', 'BG_PASSWD'))
 BG_DB = env.get("BG_DB", cf.get('bigdata', 'BG_DB'))
 
+# api
+LOCAL_API_HOST = env.get("LOCAL_API_HOST", cf.get('jzapi', 'LOCAL_API_HOST'))
+REMOTE_API_HOST = env.get("REMOTE_API_HOST", cf.get('jzapi', 'REMOTE_API_HOST'))
+AUTH_USERNAME = env.get("AUTH_USERNAME", cf.get('jzapi', 'AUTH_USERNAME'))
+AUTH_PASSWORD = env.get("AUTH_PASSWORD", cf.get('jzapi', 'AUTH_PASSWORD'))
+
 # spider
 if LOCAL:
     SPIDER_MYSQL_HOST = TEST_MYSQL_HOST
