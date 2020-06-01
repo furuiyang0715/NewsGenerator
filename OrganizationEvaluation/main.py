@@ -147,6 +147,7 @@ class OrganizationEvaluation(NewsBase):
             if is_first:
                 item = self.get_item(data)
                 items.append(item)
+                logger.info(item)
         if items:
             self._create_table()
             self._batch_save(self.target_client, items, self.target_table, self.fields)
