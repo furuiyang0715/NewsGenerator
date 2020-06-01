@@ -45,6 +45,8 @@ BG_DB = env.get("BG_DB", cf.get('bigdata', 'BG_DB'))
 # api
 LOCAL_API_HOST = env.get("LOCAL_API_HOST", cf.get('jzapi', 'LOCAL_API_HOST'))
 REMOTE_API_HOST = env.get("REMOTE_API_HOST", cf.get('jzapi', 'REMOTE_API_HOST'))
+API_HOST = LOCAL_API_HOST if LOCAL else REMOTE_API_HOST
+
 AUTH_USERNAME = env.get("AUTH_USERNAME", cf.get('jzapi', 'AUTH_USERNAME'))
 AUTH_PASSWORD = env.get("AUTH_PASSWORD", cf.get('jzapi', 'AUTH_PASSWORD'))
 
