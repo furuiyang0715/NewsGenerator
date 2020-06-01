@@ -1,10 +1,17 @@
 import datetime
 import json
+import os
 import struct
-
+import sys
+import time
+import schedule
 from PyAPI.JZpyapi import const
 from PyAPI.JZpyapi.apis.report import Rank
 from PyAPI.JZpyapi.client import SyncSocketClient
+
+cur_path = os.path.split(os.path.realpath(__file__))[0]
+file_path = os.path.abspath(os.path.join(cur_path, ".."))
+sys.path.insert(0, file_path)
 from base import NewsBase, logger
 from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
 
@@ -79,10 +86,11 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
 
     def get_changepercactual(self, inner_code):
         self._dc_init()
-        sql = '''select Close, ChangePercActual from {} where InnerCode = '{}' and Date <= '{}' order by Date desc limit 1; 
+        sql = '''select Date, ChangePercActual from {} where InnerCode = '{}' and Date <= '{}' order by Date desc limit 1; 
         '''.format(self.idx_table, inner_code, self.day)    # 因为假如今天被机构首次评级立即发布,未收盘前拿到的是昨天的行情数据, 收盘手拿到的是今天的
         ret = self.dc_client.select_one(sql)
         changepercactual = self.re_decimal_data(ret.get("ChangePercActual"))
+        print("&&&&&& ", ret.get("Date"))
         return changepercactual
 
     def start(self):
@@ -133,6 +141,16 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
         self._save(self.target_client, data, self.target_table, ['Date', "RankInfo"])
 
 
-if __name__ == "__main__":
+def task():
     mo = Stocks3DaysTop10()
     mo.start()
+
+
+if __name__ == "__main__":
+    task()
+    schedule.every().day.at("03:05").do(task)
+
+    while True:
+        # print("当前调度系统中的任务列表 {}".format(schedule.jobs))
+        schedule.run_pending()
+        time.sleep(30)
