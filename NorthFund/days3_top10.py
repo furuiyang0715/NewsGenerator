@@ -16,12 +16,9 @@ from PyAPI.JZpyapi.apis.report import Rank
 from PyAPI.JZpyapi.client import SyncSocketClient
 
 
-_today = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)
-
-
 class Stocks3DaysTop10(NewsBase):
     """三日连续净流入前10个股"""
-    def __init__(self, day=_today):
+    def __init__(self):
         super(Stocks3DaysTop10, self).__init__()
 
         self.client = SyncSocketClient(
@@ -34,7 +31,7 @@ class Stocks3DaysTop10(NewsBase):
             max_retry=-1,
             # heartbeat=3,
         )
-        self.day = day
+        self.day = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)
         self.idx_table = 'stk_quot_idx'
         self.dc_client = None
         self.target_client = None

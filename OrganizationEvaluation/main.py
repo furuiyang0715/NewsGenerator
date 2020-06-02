@@ -1,23 +1,22 @@
 import datetime
 import os
 import sys
+import time
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
 file_path = os.path.abspath(os.path.join(cur_path, ".."))
 sys.path.insert(0, file_path)
 from base import NewsBase, logger
 
-_today = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)
-
 
 class OrganizationEvaluation(NewsBase):
 
-    def __init__(self, day=_today):
+    def __init__(self):
         super(OrganizationEvaluation, self).__init__()
         self.source_table = 'rrp_rpt_secu_rat'
         self.idx_table = 'stk_quot_idx'
         self.target_table = 'news_generate_organization'
-        self.day = day
+        self.day = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)
         self.bg_client = None
         self.dc_client = None
         self.target_client = None
@@ -84,9 +83,13 @@ class OrganizationEvaluation(NewsBase):
         item = dict()
         item['PubDate'] = self.day
         item['PubType'] = 1
+        if len(trd_code) < 6:
+            trd_code = (6-len(trd_code))*"0" + trd_code
         item["SecuCode"] = trd_code
         item['SecuAbbr'] = secu_sht
         inner_code = self.get_inner_code_bysecu(trd_code)
+        if not inner_code:
+            return
         item['InnerCode'] = inner_code
         item['ComId'] = com_id
         item['ComName'] = com_name
@@ -140,19 +143,25 @@ class OrganizationEvaluation(NewsBase):
 
     def start(self):
         datas = self.get_pub_today()
+        logger.info("今天截止目前发布个数{}".format(len(datas)))
         self._dc_init()
         items = []
         for data in datas:
             is_first = self.check_pub_first(data)
             if is_first:
                 item = self.get_item(data)
-                items.append(item)
-                logger.info(item)
+                if item:
+                    items.append(item)
+                    logger.info(item)
         if items:
+            logger.info("今天截止目前首次发布的个数{}".format(len(items)))
             self._create_table()
             self._batch_save(self.target_client, items, self.target_table, self.fields)
 
 
 if __name__ == "__main__":
-    oe = OrganizationEvaluation()
-    oe.start()
+    while True:
+        print()
+        OrganizationEvaluation().start()
+        time.sleep(10)
+

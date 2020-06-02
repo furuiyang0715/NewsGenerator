@@ -94,7 +94,8 @@ class NewsBase(object):
         ret = self.inner_code_map.get(secu_code)
         if not ret:
             logger.warning("此证券代码 {} 不存在内部编码".format(secu_code))
-            raise
+            # raise
+            return None
         return ret
 
     def get_inner_code_bycompany(self, company_code):
