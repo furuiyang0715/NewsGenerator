@@ -1,5 +1,6 @@
 # 保存每日的主力十大净买股
 import datetime
+import json
 import struct
 
 from PyAPI.JZpyapi import const
@@ -27,7 +28,23 @@ class DayTop10Saver(NewsBase):
         self.dc_client = None
         self.target_client = None
         self.juyuan_client = None
-        self.target_table = ''
+        self.target_table = 'rankdaytop'
+
+    def _create_table(self):
+        client = self._init_pool(self.product_cfg)
+        sql = '''
+        CREATE TABLE IF NOT EXISTS `{}` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `Date` datetime NOT NULL COMMENT '日期', 
+          `DayRank` json  NOT NULL COMMENT '三日连续净流入前10个股', 
+          `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
+          `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+           PRIMARY KEY (`id`),
+           UNIQUE KEY `dt_thre` (`Date`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='每日净流入排行';
+        '''.format(self.target_table)
+        client.insert(sql)
+        client.dispose()
 
     def _dc_init(self):
         self.dc_client = self._init_pool(self.dc_cfg)
@@ -64,6 +81,8 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
         return changepercactual
 
     def start(self):
+        self._create_table()
+
         _count = 4000
         # 在不知今天的具体有多少只的情况下, 拿到今天的全部数据
         while True:
@@ -80,25 +99,30 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
         rank_map = {}
         rank_num = 1
         for one in rank.row:
-            print("code:", one.stock_code)
+            # print("code:", one.stock_code)
             for i in one.data:
                 if i.type == 1:
                     item = {}
                     secu_code = one.stock_code[2:]
-                    inner_code, secu_abbr = self.get_juyuan_codeinfo(secu_code)
-                    _changepercactual = self.get_changepercactual(inner_code)
+                    # inner_code, secu_abbr = self.get_juyuan_codeinfo(secu_code)
+                    # _changepercactual = self.get_changepercactual(inner_code)
                     item['value'] = struct.unpack("<f", i.value)[0]
                     item['secu_code'] = secu_code
-                    item['inner_code'] = inner_code
-                    item['secu_abbr'] = secu_abbr
-                    item['changepercactual'] = _changepercactual
+                    # item['inner_code'] = inner_code
+                    # item['secu_abbr'] = secu_abbr
+                    # item['changepercactual'] = _changepercactual
                     rank_map[rank_num] = item
                     rank_num += 1
                 elif i.type == 3:
                     print(bytes.fromhex(i.value.hex()).decode("utf-8"))
 
-        for k, v in rank_map.items():
-            print(k, ">>>", v)
+        # for k, v in rank_map.items():
+            # print(k, ">>>", v)
+
+        self._target_init()
+        data = {"Date": self.day, "DayRank": json.dumps(rank_map, ensure_ascii=False)}
+        self._save(self.target_client, data, self.target_table, ["Date", "DayRank"])
+        self.ding('每日流入排行数据已插入,数量{}'.format(len(list(rank_map.keys()))))
 
 
 if __name__ == "__main__":
