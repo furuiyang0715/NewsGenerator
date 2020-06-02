@@ -143,6 +143,7 @@ def task():
 
 
 if __name__ == "__main__":
+    task()
     schedule.every().day.at("03:05").do(task)
 
     while True:
