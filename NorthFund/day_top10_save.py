@@ -1,7 +1,15 @@
 # 保存每日的主力十大净买股
 import datetime
 import json
+import os
 import struct
+import sys
+import time
+
+import schedule
+cur_path = os.path.split(os.path.realpath(__file__))[0]
+file_path = os.path.abspath(os.path.join(cur_path, ".."))
+sys.path.insert(0, file_path)
 
 from PyAPI.JZpyapi import const
 from PyAPI.JZpyapi.apis.report import Rank
@@ -11,6 +19,7 @@ from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
 
 
 class DayTop10Saver(NewsBase):
+    """每日流入排行"""
     def __init__(self):
         super(DayTop10Saver, self).__init__()
         self.client = SyncSocketClient(
@@ -125,5 +134,18 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
         self.ding('每日流入排行数据已插入,数量{}'.format(len(list(rank_map.keys()))))
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
+#     DayTop10Saver().start()
+
+
+def task():
     DayTop10Saver().start()
+
+
+if __name__ == "__main__":
+    schedule.every().day.at("03:05").do(task)
+
+    while True:
+        # print("当前调度系统中的任务列表 {}".format(schedule.jobs))
+        schedule.run_pending()
+        time.sleep(30)
