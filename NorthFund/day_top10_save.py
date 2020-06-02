@@ -30,9 +30,19 @@ class DayTop10Saver(NewsBase):
         self.target_table = ''
 
     def start(self):
-        rank = Rank.sync_get_rank_net_purchase_by_code(
-            self.client, offset=0, count=10, stock_code_array=["$$沪深A股"]
-        )
+        _count = 4000
+        # 在不知今天的具体有多少只的情况下, 拿到今天的全部数据
+        while True:
+            rank = Rank.sync_get_rank_net_purchase_by_code(
+                self.client, offset=0, count=_count, stock_code_array=["$$沪深A股"]
+            )
+
+            print(len(rank.row))
+            if len(rank.row) < _count:
+                break
+            else:
+                _count += 100
+
         for one in rank.row:
             print("code:", one.stock_code)
             for i in one.data:
