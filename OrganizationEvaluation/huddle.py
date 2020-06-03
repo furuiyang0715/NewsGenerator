@@ -23,20 +23,6 @@ class OrganizationEvaluation(NewsBase):
         self.target_client = None
         self.title_format = '{}月{}日{}只个股获机构首次评级: '
         self.content_format = '{}（{}）获得{}首次评级 - {}，最新收盘价{}，涨幅{}%。'
-        self.fields = ['PubDate',     # 资讯发布时间, 首次评级立即发布; 获多机构买入增持评级, 第二天 9 点发出
-                       'PubType',     # 资讯类型1:首次评级2:获多机构买入增持评级
-                       'SecuCode',    # 证券代码
-                       'SecuAbbr',   # 证券简称
-                       'InnerCode',  # 聚源内部编码
-                       'ComId',     # 撰写机构编码 仅在某机构首次评级时填入
-                       'ComName',   # 撰写机构名称 仅在某机构首次评级时填入
-                       'RatCode',   # 投资评级代码 仅在某机构首次评级时填入
-                       'RatDesc',   # 投资评级描述 仅在某机构首次评级时填入
-                       'Title',    # 生成资讯标题
-                       'Content',  # 生层资讯正文
-                       'Close',  # 收盘价
-                       'ChangePercActual',  # 实际涨跌幅
-                    ]
 
     def __del__(self):
         if self.bg_client:
@@ -55,7 +41,7 @@ class OrganizationEvaluation(NewsBase):
     def _target_init(self):
         self.target_client = self._init_pool(self.product_cfg)
 
-    def get_pub_today(self):
+    def get_pub_first(self):
         """发布时间在指定日期的全部数据"""
         self._bg_init()
         select_fields = 'pub_dt,trd_code,secu_sht, com_id,com_name,rat_code,rat_desc'
@@ -100,14 +86,10 @@ class OrganizationEvaluation(NewsBase):
                 logger.info("非A股")
                 continue
             secu_sht = data.get("secu_sht")
-            com_id = data.get("com_id")
             com_name = data.get("com_name")
-            rat_code = data.get("rat_code")
             rat_desc = data.get("rat_desc")
 
             item = dict()
-            item['PubDate'] = self.day
-            item['PubType'] = 1
             if len(trd_code) < 6:
                 trd_code = (6-len(trd_code))*"0" + trd_code
             item["SecuCode"] = trd_code
@@ -115,19 +97,12 @@ class OrganizationEvaluation(NewsBase):
             inner_code = self.get_inner_code_bysecu(trd_code)
             if not inner_code:
                 continue
-            item['InnerCode'] = inner_code
-            item['ComId'] = com_id
-            item['ComName'] = com_name
-            item['RatCode'] = rat_code
-            item['RatDesc'] = rat_desc
 
             sql = '''select Close, ChangePercActual from {} where InnerCode = {} and Date <= '{}' order by Date desc limit 1; 
-            '''.format(self.idx_table, inner_code, self.day)    # 因为假如今天被机构首次评级 最新拿到的是昨天的行情数据
+            '''.format(self.idx_table, inner_code, self.day)
             ret = self.dc_client.select_one(sql)
             _close = self.re_decimal_data(ret.get("Close"))
             changepercactual = self.re_decimal_data(ret.get("ChangePercActual"))
-            # eg.杰瑞股份（000021）获得申港证券首次评级 - 买入，最新收盘价24.86，涨幅+1.12%。
-            # '{}（{}）获得{}首次评级 - {}，最新收盘价{}，涨幅{}%。'
             content = self.content_format.format(secu_sht, trd_code, com_name, rat_desc, _close, changepercactual)
             item['Close'] = _close
             item['ChangePercActual'] = changepercactual
@@ -140,8 +115,6 @@ class OrganizationEvaluation(NewsBase):
         for item in items:
             content += (item.get("Content") + "\n")
 
-        # print(content)
-
         ret = dict()
         ret["PubDate"] = self._today
         ret['PubType'] = 1
@@ -149,9 +122,9 @@ class OrganizationEvaluation(NewsBase):
         ret["Content"] = content
         self._save(self.target_client, ret, self.target_table, ["PubDate", 'PubType', 'Title', "Content"])
 
-    def start(self):
+    def pub_first_news(self):
         self._create_table()
-        datas = self.get_pub_today()
+        datas = self.get_pub_first()
         logger.info("{} 的发布个数为 {}".format(self.day, len(datas)))
 
         self._dc_init()
@@ -168,5 +141,5 @@ class OrganizationEvaluation(NewsBase):
 
 
 if __name__ == "__main__":
-    OrganizationEvaluation().start()
+    OrganizationEvaluation().pub_first_news()
 
