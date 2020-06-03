@@ -189,6 +189,17 @@ class NewsBase(object):
 
         return _map
 
+    @property
+    def a_secucategory_codes(self):
+        """获取 A 股证券代码列表"""
+        juyuan = self._init_pool(self.juyuan_cfg)
+        sql = '''select SecuCode from secumain where SecuCategory = 1;'''
+        ret = juyuan.select_all(sql)
+        secu_codes = []
+        for r in ret:
+            secu_codes.append(r.get("SecuCode"))
+        return secu_codes
+
     @staticmethod
     def re_decimal_data(data):
         """一般小数保留前两位"""

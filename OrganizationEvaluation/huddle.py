@@ -1,4 +1,3 @@
-# 机构首次生成合并生成
 import datetime
 import os
 import sys
@@ -11,18 +10,19 @@ from base import NewsBase, logger
 
 class OrganizationEvaluation(NewsBase):
 
-    def __init__(self):
+    def __init__(self, _today=None):
         super(OrganizationEvaluation, self).__init__()
         self.source_table = 'rrp_rpt_secu_rat'
         self.idx_table = 'stk_quot_idx'
         self.target_table = 'news_generate_organization'
         # 需求是在过 0 点的时候生成前一天的整合新闻
-        self.day = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min) - datetime.timedelta(days=1)
+        self._today = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min) if not _today else _today
+        self.day = self._today - datetime.timedelta(days=1)
         self.bg_client = None
         self.dc_client = None
         self.target_client = None
-        self.title_format = "{}今日获机构首次评级-{}"
-        self.content_format = '{}月{}日{}（{}）获得{}首次评级 - {}，最新收盘价{}，涨幅{}%。'
+        self.title_format = '{}月{}日{}只个股获机构首次评级: '
+        self.content_format = '{}（{}）获得{}首次评级 - {}，最新收盘价{}，涨幅{}%。'
         self.fields = ['PubDate',     # 资讯发布时间, 首次评级立即发布; 获多机构买入增持评级, 第二天 9 点发出
                        'PubType',     # 资讯类型1:首次评级2:获多机构买入增持评级
                        'SecuCode',    # 证券代码
@@ -79,21 +79,12 @@ class OrganizationEvaluation(NewsBase):
           `id` int(11) NOT NULL AUTO_INCREMENT,
           `PubDate` datetime NOT NULL COMMENT '资讯发布时间', 
           `PubType` int NOT NULL COMMENT '资讯类型1:首次评级2:获多机构买入增持评级',
-          `SecuCode` varchar(10) DEFAULT NULL COMMENT '证券代码',  
-          `SecuAbbr` varchar(100) DEFAULT NULL COMMENT '证券简称', 
-          `InnerCode` int(11) NOT NULL COMMENT '证券内部编码',
-          `ComId` decimal(10,0) NOT NULL COMMENT '发行机构 ID',
-          `ComName` varchar(200) DEFAULT NULL COMMENT '撰写机构名称', 
-          `RatCode` decimal(10,0) DEFAULT NULL COMMENT '投资评级代码',
-          `RatDesc` varchar(50) DEFAULT NULL COMMENT '投资评级描述',
           `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题', 
           `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
-          `Close` decimal(20,2) DEFAULT NULL COMMENT '收盘价',
-          `ChangePercActual` decimal(20,6) DEFAULT NULL COMMENT '实际涨跌幅(%)', 
           `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
           `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
            PRIMARY KEY (`id`),
-           UNIQUE KEY `un2` (`SecuCode`, `PubDate`, `PubType`, `ComId`) 
+           UNIQUE KEY `un2` (`PubDate`, `PubType`) 
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='机构评级资讯生成';
         '''.format(self.target_table)
         self._target_init()
@@ -101,9 +92,13 @@ class OrganizationEvaluation(NewsBase):
         logger.info("建表成功 ")
 
     def process_items(self, datas):
+        secu_codes = self.a_secucategory_codes
         items = []
         for data in datas:
             trd_code = data.get("trd_code")
+            if not trd_code in secu_codes:
+                logger.info("非A股")
+                continue
             secu_sht = data.get("secu_sht")
             com_id = data.get("com_id")
             com_name = data.get("com_name")
@@ -131,18 +126,31 @@ class OrganizationEvaluation(NewsBase):
             ret = self.dc_client.select_one(sql)
             _close = self.re_decimal_data(ret.get("Close"))
             changepercactual = self.re_decimal_data(ret.get("ChangePercActual"))
-            # eg.4月12日杰瑞股份（000021）获得申港证券首次评级 - 买入，最新收盘价24.86，涨幅+1.12%。
-            # '{}月{}日{}（{}）获得{}首次评级 - {}，最新收盘价{}，涨幅{}%。'
-            content = self.content_format.format(self.day.month, self.day.day, secu_sht, trd_code, com_name, rat_desc, _close, changepercactual)
+            # eg.杰瑞股份（000021）获得申港证券首次评级 - 买入，最新收盘价24.86，涨幅+1.12%。
+            # '{}（{}）获得{}首次评级 - {}，最新收盘价{}，涨幅{}%。'
+            content = self.content_format.format(secu_sht, trd_code, com_name, rat_desc, _close, changepercactual)
             item['Close'] = _close
             item['ChangePercActual'] = changepercactual
             item['Content'] = content
-            logger.info(item)
+            logger.debug(item)
             items.append(item)
 
-        # print(items)
+        title = self.title_format.format(self.day.month, self.day.day, len(items))
+        content = ''
+        for item in items:
+            content += (item.get("Content") + "\n")
+
+        # print(content)
+
+        ret = dict()
+        ret["PubDate"] = self._today
+        ret['PubType'] = 1
+        ret['Title'] = title
+        ret["Content"] = content
+        self._save(self.target_client, ret, self.target_table, ["PubDate", 'PubType', 'Title', "Content"])
 
     def start(self):
+        self._create_table()
         datas = self.get_pub_today()
         logger.info("{} 的发布个数为 {}".format(self.day, len(datas)))
 
