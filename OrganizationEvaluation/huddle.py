@@ -2,7 +2,6 @@
 import datetime
 import os
 import sys
-import time
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
 file_path = os.path.abspath(os.path.join(cur_path, ".."))
@@ -17,7 +16,8 @@ class OrganizationEvaluation(NewsBase):
         self.source_table = 'rrp_rpt_secu_rat'
         self.idx_table = 'stk_quot_idx'
         self.target_table = 'news_generate_organization'
-        self.day = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)
+        # 需求是在过 0 点的时候生成前一天的整合新闻
+        self.day = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min) - datetime.timedelta(days=1)
         self.bg_client = None
         self.dc_client = None
         self.target_client = None
@@ -73,48 +73,6 @@ class OrganizationEvaluation(NewsBase):
         else:
             return False
 
-    def get_item(self, data):
-        trd_code = data.get("trd_code")
-        secu_sht = data.get("secu_sht")
-        com_id = data.get("com_id")
-        com_name = data.get("com_name")
-        rat_code = data.get("rat_code")
-        rat_desc = data.get("rat_desc")
-
-        item = dict()
-        item['PubDate'] = self.day
-        item['PubType'] = 1
-        if len(trd_code) < 6:
-            trd_code = (6-len(trd_code))*"0" + trd_code
-        item["SecuCode"] = trd_code
-        item['SecuAbbr'] = secu_sht
-        inner_code = self.get_inner_code_bysecu(trd_code)
-        if not inner_code:
-            return
-        item['InnerCode'] = inner_code
-        item['ComId'] = com_id
-        item['ComName'] = com_name
-        item['RatCode'] = rat_code
-        item['RatDesc'] = rat_desc
-
-        # eg.杰瑞股份今日获机构首次评级-买入
-        # "{}今日获机构首次评级-{}"
-        title = self.title_format.format(secu_sht, rat_desc)
-        item['Title'] = title
-
-        sql = '''select Close, ChangePercActual from {} where InnerCode = {} and Date <= '{}' order by Date desc limit 1; 
-        '''.format(self.idx_table, inner_code, self.day)    # 因为假如今天被机构首次评级 最新拿到的是昨天的行情数据
-        ret = self.dc_client.select_one(sql)
-        _close = self.re_decimal_data(ret.get("Close"))
-        changepercactual = self.re_decimal_data(ret.get("ChangePercActual"))
-        # eg.4月12日杰瑞股份（000021）获得申港证券首次评级 - 买入，最新收盘价24.86，涨幅+1.12%。
-        # '{}月{}日{}（{}）获得{}首次评级 - {}，最新收盘价{}，涨幅{}%。'
-        content = self.content_format.format(self.day.month, self.day.day, secu_sht, trd_code, com_name, rat_desc, _close, changepercactual)
-        item['Close'] = _close
-        item['ChangePercActual'] = changepercactual
-        item['Content'] = content
-        return item
-
     def _create_table(self):
         sql = '''
         CREATE TABLE IF NOT EXISTS `{}` (
@@ -142,27 +100,65 @@ class OrganizationEvaluation(NewsBase):
         self.target_client.insert(sql)
         logger.info("建表成功 ")
 
+    def process_items(self, datas):
+        items = []
+        for data in datas:
+            trd_code = data.get("trd_code")
+            secu_sht = data.get("secu_sht")
+            com_id = data.get("com_id")
+            com_name = data.get("com_name")
+            rat_code = data.get("rat_code")
+            rat_desc = data.get("rat_desc")
+
+            item = dict()
+            item['PubDate'] = self.day
+            item['PubType'] = 1
+            if len(trd_code) < 6:
+                trd_code = (6-len(trd_code))*"0" + trd_code
+            item["SecuCode"] = trd_code
+            item['SecuAbbr'] = secu_sht
+            inner_code = self.get_inner_code_bysecu(trd_code)
+            if not inner_code:
+                continue
+            item['InnerCode'] = inner_code
+            item['ComId'] = com_id
+            item['ComName'] = com_name
+            item['RatCode'] = rat_code
+            item['RatDesc'] = rat_desc
+
+            sql = '''select Close, ChangePercActual from {} where InnerCode = {} and Date <= '{}' order by Date desc limit 1; 
+            '''.format(self.idx_table, inner_code, self.day)    # 因为假如今天被机构首次评级 最新拿到的是昨天的行情数据
+            ret = self.dc_client.select_one(sql)
+            _close = self.re_decimal_data(ret.get("Close"))
+            changepercactual = self.re_decimal_data(ret.get("ChangePercActual"))
+            # eg.4月12日杰瑞股份（000021）获得申港证券首次评级 - 买入，最新收盘价24.86，涨幅+1.12%。
+            # '{}月{}日{}（{}）获得{}首次评级 - {}，最新收盘价{}，涨幅{}%。'
+            content = self.content_format.format(self.day.month, self.day.day, secu_sht, trd_code, com_name, rat_desc, _close, changepercactual)
+            item['Close'] = _close
+            item['ChangePercActual'] = changepercactual
+            item['Content'] = content
+            logger.info(item)
+            items.append(item)
+
+        # print(items)
+
     def start(self):
         datas = self.get_pub_today()
-        logger.info("今天截止目前发布个数{}".format(len(datas)))
+        logger.info("{} 的发布个数为 {}".format(self.day, len(datas)))
+
         self._dc_init()
-        items = []
+        first_datas = []
         for data in datas:
             is_first = self.check_pub_first(data)
             if is_first:
-                item = self.get_item(data)
-                if item:
-                    items.append(item)
-                    logger.info(item)
-        if items:
-            logger.info("今天截止目前首次发布的个数{}".format(len(items)))
-            self._create_table()
-            self._batch_save(self.target_client, items, self.target_table, self.fields)
+                first_datas.append(data)
+                # logger.info(data)
+        if datas:
+            logger.info("{} 首次发布的个数 {}".format(self.day, len(first_datas)))
+
+        self.process_items(first_datas)
 
 
 if __name__ == "__main__":
-    while True:
-        print()
-        OrganizationEvaluation().start()
-        time.sleep(10)
+    OrganizationEvaluation().start()
 
