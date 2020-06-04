@@ -1,5 +1,6 @@
 import datetime
 import os
+import pprint
 import sys
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
@@ -9,7 +10,7 @@ from base import NewsBase, logger
 
 
 class OrganizationEvaluation(NewsBase):
-
+    """机构首次生成 昨日数据汇总"""
     def __init__(self, _today=None):
         super(OrganizationEvaluation, self).__init__()
         self.source_table = 'rrp_rpt_secu_rat'
@@ -33,19 +34,33 @@ class OrganizationEvaluation(NewsBase):
             self.target_client.dispose()
 
     def _bg_init(self):
+        if self.bg_client:
+            return
         self.bg_client = self._init_pool(self.bigdata_cfg)
 
     def _dc_init(self):
+        if self.dc_client:
+            return
         self.dc_client = self._init_pool(self.dc_cfg)
 
     def _target_init(self):
+        if self.target_client:
+            return
         self.target_client = self._init_pool(self.product_cfg)
 
     def get_pub_first(self):
-        """发布时间在指定日期的全部数据"""
+        """昨日个股获得新机构首次评级，第二天9点40发布"""
         self._bg_init()
         select_fields = 'pub_dt,trd_code,secu_sht, com_id,com_name,rat_code,rat_desc'
         sql = '''select {} from {} where pub_dt = '{}';'''.format(select_fields, self.source_table, self.day)
+        ret = self.bg_client.select_all(sql)
+        return ret
+
+    def get_evaluate_more(self):
+        """昨日获得五家（含）以上机构买入或获增持评级个股，第二天9点40发布"""
+        self._bg_init()
+        sql = '''select trd_code,count(*) as count from {} where pub_dt = '{}' \
+and rat_code in (10, 20) group by trd_code having count(*) >=5;'''.format(self.source_table, self.day)
         ret = self.bg_client.select_all(sql)
         return ret
 
@@ -139,7 +154,36 @@ class OrganizationEvaluation(NewsBase):
 
         self.process_items(first_datas)
 
+    def evaluate_more(self):
+        secu_codes = self.a_secucategory_codes
+        self._create_table()
+        datas = self.get_evaluate_more()
+        content = ''
+        for data in datas:
+            trd_code = data.get("trd_code")
+            if not trd_code in secu_codes:
+                logger.info("非 A 股")
+                continue
+            count = data.get("count")
+            sql = """select pub_dt,trd_code,secu_sht, com_id,com_name,rat_code,rat_desc from {} \
+            where pub_dt = '{}' and  rat_code in (10, 20) and trd_code = '{}';""".format(self.source_table, self.day, trd_code)
+            ret = self.bg_client.select_one(sql)
+            secu_sht = ret.get('secu_sht')
+            rat_desc = ret.get("rat_desc")
+            # '杰瑞股份（000021）获6家机构评级-买入/增持，最新收盘价24.86，涨幅+1.12%。'
+            content += '{}（{}）获{}家机构评级-{}，最新收盘价{}，涨幅{}%。 \n'.format(secu_sht, trd_code, count, rat_desc, None, None)
+
+        title = '{}月{}日{}只个股获5家以上机构评级'.format(self.day.month, self.day.day, len(datas))
+        print(title)
+        print(content)
+        final = dict()
+        final["PubDate"] = self._today
+        final['PubType'] = 2
+        final['Title'] = title
+        final['Content'] = content
+        print(pprint.pformat(final))
+
 
 if __name__ == "__main__":
-    OrganizationEvaluation().pub_first_news()
-
+    # OrganizationEvaluation().pub_first_news()
+    OrganizationEvaluation().evaluate_more()
