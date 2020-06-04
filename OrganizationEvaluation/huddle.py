@@ -54,6 +54,7 @@ class OrganizationEvaluation(NewsBase):
         """昨日个股获得新机构首次评级，第二天9点40发布"""
         self._bg_init()
         select_fields = 'pub_dt,trd_code,secu_sht, com_id,com_name,rat_code,rat_desc'
+        # 查询发布时间等于指定时间的全量数据
         sql = '''select {} from {} where pub_dt = '{}';'''.format(select_fields, self.source_table, self.day)
         ret = self.bg_client.select_all(sql)
         return ret
@@ -96,6 +97,11 @@ and rat_code in (10, 20) group by trd_code having count(*) >=5;'''.format(self.s
 
     def process_items(self, datas):
         secu_codes = self.a_secucategory_codes
+
+        # 对首次发布的数据再次进行筛选
+        # (1) A 股票
+        # (2) 存在聚源内部编码
+        # (3) 可查询到当日的收盘价以及涨跌幅
         items = []
         for data in datas:
             trd_code = data.get("trd_code")
@@ -118,6 +124,10 @@ and rat_code in (10, 20) group by trd_code having count(*) >=5;'''.format(self.s
             sql = '''select Close, ChangePercActual from {} where InnerCode = {} and Date <= '{}' order by Date desc limit 1; 
             '''.format(self.idx_table, inner_code, self.day)
             ret = self.dc_client.select_one(sql)
+            if not ret:
+                logger.info("{} {} 无法查询到 {} 的收盘价以及涨跌幅".format(trd_code, secu_sht, self.day))
+                continue
+
             _close = self.re_decimal_data(ret.get("Close"))
             changepercactual = self.re_decimal_data(ret.get("ChangePercActual"))
             content = self.content_format.format(secu_sht, trd_code, com_name, rat_desc, _close, changepercactual)
@@ -126,6 +136,10 @@ and rat_code in (10, 20) group by trd_code having count(*) >=5;'''.format(self.s
             item['Content'] = content
             logger.debug(item)
             items.append(item)
+
+        if len(items) == 0:
+            logger.warning("{} 无符合条件的首次发布数据".format(self.day))
+            return
 
         title = self.title_format.format(self.day.month, self.day.day, len(items))
         content = ''
@@ -140,6 +154,7 @@ and rat_code in (10, 20) group by trd_code having count(*) >=5;'''.format(self.s
         self._save(self.target_client, ret, self.target_table, ["PubDate", 'PubType', 'Title', "Content"])
 
     def pub_first_news(self):
+        """机构首次评审"""
         self._create_table()
         datas = self.get_pub_first()
         logger.info("{} 的发布个数为 {}".format(self.day, len(datas)))
@@ -150,41 +165,64 @@ and rat_code in (10, 20) group by trd_code having count(*) >=5;'''.format(self.s
             is_first = self.check_pub_first(data)
             if is_first:
                 first_datas.append(data)
-                # logger.info(data)
-        if datas:
-            logger.info("{} 首次发布的个数 {}".format(self.day, len(first_datas)))
 
-        self.process_items(first_datas)
+        # first_datas-items 代表符合条件的数据
+        if first_datas:
+            logger.info("{} 首次发布的个数 {}".format(self.day, len(first_datas)))
+            self.process_items(first_datas)
+        else:
+            logger.info("{} 无首次发布".format(self.day))
 
     def evaluate_more(self):
         secu_codes = self.a_secucategory_codes
         self._create_table()
         datas = self.get_evaluate_more()
-        content = ''
+
+        # more_datas 代表符合要求的数据
+        # (1) A 股
+        # (2) 可查询到聚源内部编码
+        # (3) 可查询到当日的收盘价以及涨跌幅
+        more_datas = []
         for data in datas:
             trd_code = data.get("trd_code")
             if not trd_code in secu_codes:
                 logger.info("非 A 股")
                 continue
+            inner_code = self.get_inner_code_bysecu(trd_code)
+            if not inner_code:
+                continue
+            sql = '''select Close, ChangePercActual from {} where InnerCode = {} and Date <= '{}' order by Date desc limit 1; 
+                        '''.format(self.idx_table, inner_code, self.day)
+            ret = self.dc_client.select_one(sql)
+            if not ret:
+                logger.info("{} 无法查询到 {} 的收盘价以及涨跌幅".format(trd_code, self.day))
+                continue
+            _close = self.re_decimal_data(ret.get("Close"))
+            changepercactual = self.re_decimal_data(ret.get("ChangePercActual"))
+            data['_close'] = _close
+            data['changepercactual'] = changepercactual
+            more_datas.append(data)
+
+        if len(more_datas) == 0:
+            logger.info("{} 今日无满足要求的多机构评级数据".format(self.day))
+            return
+
+        content = ''
+        for data in more_datas:
             count = data.get("count")
+            trd_code = data.get("trd_code")
+            _close = data.get("_close")
+            changepercactual = data.get("changepercactual")
+
             sql = """select pub_dt,trd_code,secu_sht, com_id,com_name,rat_code,rat_desc from {} \
             where pub_dt = '{}' and  rat_code in (10, 20) and trd_code = '{}';""".format(self.source_table, self.day, trd_code)
             ret = self.bg_client.select_one(sql)
             secu_sht = ret.get('secu_sht')
             rat_desc = ret.get("rat_desc")
-
-            inner_code = self.get_inner_code_bysecu(trd_code)
-            if not inner_code:
-                continue
             self._dc_init()
-            sql = '''select Close, ChangePercActual from {} where InnerCode = {} and Date <= '{}' order by Date desc limit 1; 
-                        '''.format(self.idx_table, inner_code, self.day)
-            ret = self.dc_client.select_one(sql)
-            _close = self.re_decimal_data(ret.get("Close"))
-            changepercactual = self.re_decimal_data(ret.get("ChangePercActual"))
             content += '{}（{}）获{}家机构评级-{}，最新收盘价{}，涨幅{}%。 \n'.format(secu_sht, trd_code, count, rat_desc, _close, changepercactual)
 
-        title = '{}月{}日{}只个股获5家以上机构评级'.format(self.day.month, self.day.day, len(datas))
+        title = '{}月{}日{}只个股获5家以上机构评级'.format(self.day.month, self.day.day, len(more_datas))
         final = dict()
         final["PubDate"] = self._today
         final['PubType'] = 2
@@ -194,13 +232,30 @@ and rat_code in (10, 20) group by trd_code having count(*) >=5;'''.format(self.s
 
 
 def task():
+    """当日数据"""
     runner = OrganizationEvaluation()
     runner.pub_first_news()
     print()
     runner.evaluate_more()
 
 
+def history_task():
+    """历史数据"""
+    _start = datetime.datetime(2020, 1, 13)
+    _end = datetime.datetime(2020, 6, 3)
+    _dt = _start
+    while _dt <= _end:
+        print(_dt)
+        runner = OrganizationEvaluation(_dt)
+        runner.pub_first_news()
+        print()
+        runner.evaluate_more()
+        _dt += datetime.timedelta(days=1)
+    print("END")
+
+
 if __name__ == "__main__":
+    history_task()
     task()
     schedule.every().day.at("00:05").do(task)
     schedule.every().day.at("09:00").do(task)
