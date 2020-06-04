@@ -1,6 +1,9 @@
 import datetime
 import os
 import sys
+import time
+
+import schedule
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
 file_path = os.path.abspath(os.path.join(cur_path, ".."))
@@ -199,3 +202,10 @@ def task():
 
 if __name__ == "__main__":
     task()
+    schedule.every().day.at("00:05").do(task)
+    schedule.every().day.at("09:00").do(task)
+
+    while True:
+        # print("当前调度系统中的任务列表 {}".format(schedule.jobs))
+        schedule.run_pending()
+        time.sleep(30)
