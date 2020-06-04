@@ -67,20 +67,32 @@ fields = ['code',    # 股票代码
           'close',  # 当日价格
           'org_net_buy',    # 机构净买
           'net_buy',   # 总净买入
+
+          'org_count',  # 机构数量
           ]
 
 max_one = None
-max_item = dict()
+max_netbuy_item = dict()
+max_orgcount_item = dict()
+max_count = None
 for one in res.data:
-    if max_one is None:
+    if max_one is None and max_count is None:
         max_one = one.org_net_buy
+        max_count = one.org_count
         for field in fields:
-            max_item[field] = getattr(one, field)
+            max_netbuy_item[field] = getattr(one, field)
+            max_orgcount_item[field] = getattr(one, field)
 
     if max_one < one.org_net_buy:
         max_one = one.org_net_buy
         for field in fields:
-            max_item[field] = getattr(one, field)
+            max_netbuy_item[field] = getattr(one, field)
 
-print(max_one)
-print(max_item)
+    if max_count < one.org_count:
+        max_count = one.org_count
+        for field in fields:
+            max_orgcount_item[field] = getattr(one, field)
+
+
+print(max_netbuy_item)
+print(max_orgcount_item)
