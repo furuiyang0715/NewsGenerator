@@ -1,6 +1,5 @@
 import datetime
 import os
-import pprint
 import sys
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
@@ -170,20 +169,33 @@ and rat_code in (10, 20) group by trd_code having count(*) >=5;'''.format(self.s
             ret = self.bg_client.select_one(sql)
             secu_sht = ret.get('secu_sht')
             rat_desc = ret.get("rat_desc")
-            # '杰瑞股份（000021）获6家机构评级-买入/增持，最新收盘价24.86，涨幅+1.12%。'
-            content += '{}（{}）获{}家机构评级-{}，最新收盘价{}，涨幅{}%。 \n'.format(secu_sht, trd_code, count, rat_desc, None, None)
+
+            inner_code = self.get_inner_code_bysecu(trd_code)
+            if not inner_code:
+                continue
+            self._dc_init()
+            sql = '''select Close, ChangePercActual from {} where InnerCode = {} and Date <= '{}' order by Date desc limit 1; 
+                        '''.format(self.idx_table, inner_code, self.day)
+            ret = self.dc_client.select_one(sql)
+            _close = self.re_decimal_data(ret.get("Close"))
+            changepercactual = self.re_decimal_data(ret.get("ChangePercActual"))
+            content += '{}（{}）获{}家机构评级-{}，最新收盘价{}，涨幅{}%。 \n'.format(secu_sht, trd_code, count, rat_desc, _close, changepercactual)
 
         title = '{}月{}日{}只个股获5家以上机构评级'.format(self.day.month, self.day.day, len(datas))
-        print(title)
-        print(content)
         final = dict()
         final["PubDate"] = self._today
         final['PubType'] = 2
         final['Title'] = title
         final['Content'] = content
-        print(pprint.pformat(final))
+        self._save(self.target_client, final, self.target_table, ["PubDate", 'PubType', 'Title', 'Content'])
+
+
+def task():
+    runner = OrganizationEvaluation()
+    runner.pub_first_news()
+    print()
+    runner.evaluate_more()
 
 
 if __name__ == "__main__":
-    # OrganizationEvaluation().pub_first_news()
-    OrganizationEvaluation().evaluate_more()
+    task()
