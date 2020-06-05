@@ -8,7 +8,7 @@
 山河药辅（300452）+1.54%，主力净买额1200万
 皇氏集团（002329）+1.54%，主力净买额1200万
 以岭药业（002603）+1.54%，主力净买额1200万
-海伦哲（300201）    +1.54%，主力净买额1200万
+海伦哲（300201）  +1.54%，主力净买额1200万
 宝色股份（300402）+1.54%，主力净买额1200万
 延江股份（300658）+1.54%，主力净买额1200万
 龙宇燃油（603003）+1.54%，主力净买额1200万
@@ -20,11 +20,13 @@ import struct
 from PyAPI.JZpyapi import const
 from PyAPI.JZpyapi.apis.report import Rank
 from PyAPI.JZpyapi.client import SyncSocketClient
+from base import NewsBase
 from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
 
 
-class MorningTop10(object):
+class MorningTop10(NewsBase):
     def __init__(self):
+        super(MorningTop10, self).__init__()
         self.client = SyncSocketClient(
             API_HOST,
             6700,
@@ -41,11 +43,18 @@ class MorningTop10(object):
         rank = Rank.sync_get_rank_net_purchase_by_code(
             self.client, offset=0, count=10, stock_code_array=["$$沪深A股"]
         )
+
+        rank_num = 1
         for one in rank.row:
-            print("code:", one.stock_code)
             for i in one.data:
                 if i.type == 1:
-                    print("value:", struct.unpack("<f", i.value)[0])
+                    item = {}
+                    secu_code = one.stock_code[2:]
+                    item['secu_code'] = secu_code
+                    item['value'] = struct.unpack("<f", i.value)[0]
+                    item['rank_num'] = rank_num
+                    rank_num += 1
+                    print(item)
                 elif i.type == 3:
                     print(bytes.fromhex(i.value.hex()).decode("utf-8"))
 
