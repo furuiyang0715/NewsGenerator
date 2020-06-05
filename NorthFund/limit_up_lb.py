@@ -20,24 +20,48 @@ client = SyncSocketClient(
 rank = Rank.sync_get_limit_up_lb_count(
     client,
     offset=0,
-    count=10,
+    count=1000,
     stock_code_array=["$$主题猎手-昨日涨停"]
-
     # client,
     # offset=0,
     # count=10,
     # stock_code_array=["$$今日涨停"],
 )
-# 返回的value从上往下依次是:连板数量,涨停封板金额,涨幅,涨停板成交额
+# 返回的value从上往下依次是:连板数量,涨停封板金额,涨幅,涨停板成交额,最新价，涨停价，跌停价，更新时间
+fields = ["lb_count",  # 连板数量
+          'rise_close_amount',  # 涨停封板金额
+          'rise_scope',  # 涨幅
+          'limit_up_amount',  # 涨停板成交额
+          'current_price',  # 最新价
+          'limit_up_price',  # 涨停价
+          'limit_down_price',  # 跌停价
+          'update_time',  # 更新时间
+          'code',  # 证券代码
+          ]
+items = []
 for one in rank.row:
-    print()
-    print("code:", one.stock_code)
+    code = one.stock_code
+    values = []
     for i in one.data:
         if i.type == 1:
-            print("value1:", struct.unpack("<f", i.value)[0])
+            value = struct.unpack("<f", i.value)[0]
         elif i.type == 4:
-            print("value4:", struct.unpack("<i", i.value)[0])
+            value = struct.unpack("<i", i.value)[0]
         elif i.type == 2:
-            print("value2:", struct.unpack("<d", i.value)[0])
+            value = struct.unpack("<d", i.value)[0]
         elif i.type == 3:
-            print(bytes.fromhex(i.value.hex()).decode("utf-8"))
+            value = bytes.fromhex(i.value.hex()).decode("utf-8")
+        else:
+            raise ValueError
+
+        # print(value)
+        values.append(value)
+
+    values.append(code)
+    item = dict(zip(fields, values))
+    items.append(item)
+    if item.get("lb_count") < 2:
+        break
+
+
+print(len(items))
