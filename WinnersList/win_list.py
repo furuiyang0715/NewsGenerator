@@ -46,7 +46,7 @@ import time
 from PyAPI.JZpyapi import const
 from PyAPI.JZpyapi.apis.report import Finance
 from PyAPI.JZpyapi.client import SyncSocketClient
-from base import NewsBase
+from base import NewsBase, logger
 from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
 
 
@@ -65,8 +65,27 @@ class WinList(NewsBase):
         )
         # self.get_time = datetime.datetime.now()
         # 收盘后接口才有数据
+        self.target_table = 'news_generate_winlist'
         self.day = datetime.datetime(2020, 6, 4)
         self.get_time = datetime.datetime(2020, 6, 4, 15, 3)
+
+    def _create_table(self):
+        sql = '''
+        CREATE TABLE IF NOT EXISTS `{}` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `PubDate` datetime NOT NULL COMMENT '资讯发布时间', 
+          `PubType` int NOT NULL COMMENT '资讯类型1:机构净买额最大2:机构购买席位数量最多',
+          `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题', 
+          `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
+          `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
+          `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+           PRIMARY KEY (`id`),
+           UNIQUE KEY `un2` (`PubDate`, `PubType`) 
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='龙虎榜资讯生成';
+        '''.format(self.target_table)
+        self._target_init()
+        self.target_client.insert(sql)
+        logger.info("建表成功 ")
 
     def get_result(self):
         timestamp = int(time.mktime(self.get_time.timetuple()))
@@ -122,7 +141,7 @@ class WinList(NewsBase):
         final['Title'] = title
         final['Content'] = content
         final['PubType'] = 1
-        print(pprint.pformat(final))
+        # print(pprint.pformat(final))
         return final
 
     def get_juyuan_codeinfo(self, secu_code):
@@ -148,10 +167,11 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
         final['Title'] = title
         final['Content'] = content
         final['PubType'] = 2
-        print(pprint.pformat(final))
+        # print(pprint.pformat(final))
         return final
 
     def start(self):
+        self._create_table()
         ret1, ret2 = self.get_result()
         final1 = self.gene_netbuy_data(ret1)
         final2 = self.gene_orgcount_data(ret2)

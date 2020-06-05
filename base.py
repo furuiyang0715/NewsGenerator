@@ -317,3 +317,7 @@ class NewsBase(object):
         """将元转换为万元 并且保留两位小数"""
         ret = float("%.2f" % (data / 10**4))
         return ret
+
+    def create_sql_table(self):
+        # TODO 进行类似于 sqlalchemy 的简单封装
+        pass
