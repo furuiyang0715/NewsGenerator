@@ -222,7 +222,9 @@ and rat_code in (10, 20) group by trd_code having count(*) >=5;'''.format(self.s
             self._dc_init()
             content += '{}（{}）获{}家机构评级-{}，最新收盘价{}，涨幅{}%。 \n'.format(secu_sht, trd_code, count, rat_desc, _close, changepercactual)
 
-        title = '{}月{}日{}只个股获5家以上机构评级'.format(self.day.month, self.day.day, len(more_datas))
+        # title = '{}月{}日{}只个股获5家以上机构评级'.format(self.day.month, self.day.day, len(more_datas))
+        # 修改标题: 6月1日23只个股获多家机构调高评级
+        title = '{}月{}日{}只个股获多家机构调高评级'.format(self.day.month, self.day.day, len(more_datas))
         final = dict()
         final["PubDate"] = self._today
         final['PubType'] = 2
