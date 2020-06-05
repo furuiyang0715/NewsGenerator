@@ -4,6 +4,11 @@
 标题：今日机构净买额最多个股为宁德时代，机构净买额达10.04亿，总净买额达12.07亿。
 内容：截至今日收盘，宁德时代机构净买额10.04亿，总净买金额达12.07亿，今日收盘价128.21，涨幅/跌幅+3.12%。
 
+龙虎榜-机构席位最多
+条件：龙虎榜机构买席数量最多个股，收盘时发布
+标题：龙虎榜今日机构买入席位最多个股为山河药辅
+内容：今日龙虎榜机构买席最多个股为山河药辅，10个机构买入，6个机构卖出，购买金额为10.12亿。今日收盘价128.21，涨幅/跌幅+3.12%。
+
 fupang专用
 龙虎榜-主力净买额数据 && 龙虎榜-机构席位
 return: repeat xwmm_vary_data
@@ -35,16 +40,19 @@ message xwmm_vary_data
 '''
 
 import datetime
+import pprint
 import time
 
 from PyAPI.JZpyapi import const
 from PyAPI.JZpyapi.apis.report import Finance
 from PyAPI.JZpyapi.client import SyncSocketClient
+from base import NewsBase
 from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
 
 
-class WinList(object):
+class WinList(NewsBase):
     def __init__(self):
+        super(WinList, self).__init__()
         self.client = SyncSocketClient(
             API_HOST,
             6700,
@@ -57,7 +65,8 @@ class WinList(object):
         )
         # self.get_time = datetime.datetime.now()
         # 收盘后接口才有数据
-        self.get_time = datetime.datetime(2020, 6, 4, 17)
+        self.day = datetime.datetime(2020, 6, 4)
+        self.get_time = datetime.datetime(2020, 6, 4, 15, 3)
 
     def get_result(self):
         timestamp = int(time.mktime(self.get_time.timetuple()))
@@ -93,12 +102,61 @@ class WinList(object):
                 max_count = one.org_count
                 for field in fields:
                     max_orgcount_item[field] = getattr(one, field)
+        return max_netbuy_item, max_orgcount_item
 
-        print(max_netbuy_item)
-        print(max_orgcount_item)
+    def gene_netbuy_data(self, ret):
+        # print(ret)
+        secu_addr = self.get_juyuan_codeinfo(ret.get("code")[2:])[1]
+        org_net_buy = self.re_money_data(ret.get("org_net_buy"))
+        net_buy = self.re_money_data(ret.get("net_buy"))
+        close = self.re_decimal_data(ret.get("close"))
+        rise_rate = self.re_decimal_data(ret.get("rise_rate"))
+        title = '今日机构净买额最多个股为{}，机构净买额达{}，总净买额达{}。'.format(secu_addr, org_net_buy, net_buy)
+        rise_str = "涨幅" if rise_rate > 0 else "跌幅"
+        content = '截至今日收盘，{}机构净买额{}，总净买金额达{}，今日收盘价{}，{}{}%。'.format(
+            secu_addr, org_net_buy, net_buy, close, rise_str, abs(rise_rate))
+        # print(title)
+        # print(content)
+        final = dict()
+        final['PubDate'] = self.day
+        final['Title'] = title
+        final['Content'] = content
+        final['PubType'] = 1
+        print(pprint.pformat(final))
+        return final
+
+    def get_juyuan_codeinfo(self, secu_code):
+        self._juyuan_init()
+        sql = 'SELECT SecuCode,InnerCode, SecuAbbr from SecuMain WHERE SecuCategory in (1, 2, 8) \
+and SecuMarket in (83, 90) \
+and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
+        ret = self.juyuan_client.select_one(sql)
+        return ret.get('InnerCode'), ret.get("SecuAbbr")
+
+    def gene_orgcount_data(self, ret):
+        # print(ret)
+        secu_addr = self.get_juyuan_codeinfo(ret.get("code")[2:])[1]
+        net_buy = self.re_money_data(ret.get("net_buy"))
+        close = self.re_decimal_data(ret.get("close"))
+        rise_rate = self.re_decimal_data(ret.get("rise_rate"))
+        rise_str = "涨幅" if rise_rate > 0 else "跌幅"
+        title = '龙虎榜今日机构买入席位最多个股为{}'.format(secu_addr)
+        content = '今日龙虎榜机构买席最多个股为{}，10个机构买入，6个机构卖出，购买金额为{}。今日收盘价{}，{}{}%。'.format(
+            secu_addr, net_buy, close, rise_str, rise_rate)
+        final = dict()
+        final['PubDate'] = self.day
+        final['Title'] = title
+        final['Content'] = content
+        final['PubType'] = 2
+        print(pprint.pformat(final))
+        return final
 
     def start(self):
-        self.get_result()
+        ret1, ret2 = self.get_result()
+        final1 = self.gene_netbuy_data(ret1)
+        final2 = self.gene_orgcount_data(ret2)
+        # print(final1)
+        # print(final2)
 
 
 if __name__ == "__main__":

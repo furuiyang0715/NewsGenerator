@@ -71,7 +71,29 @@ class NewsBase(object):
     }
 
     def __init__(self):
-        pass
+        self.dc_client = None
+        self.target_client = None
+        self.juyuan_client = None
+
+    def _dc_init(self):
+        if not self.dc_client:
+            self.dc_client = self._init_pool(self.dc_cfg)
+
+    def _target_init(self):
+        if not self.target_client:
+            self.target_client = self._init_pool(self.product_cfg)
+
+    def _juyuan_init(self):
+        if not self.juyuan_client:
+            self.juyuan_client = self._init_pool(self.juyuan_cfg)
+
+    def __del__(self):
+        if self.dc_client:
+            self.dc_client.dispose()
+        if self.target_client:
+            self.target_client.dispose()
+        if self.juyuan_client:
+            self.juyuan_client.dispose()
 
     def _init_pool(self, cfg: dict):
         """
