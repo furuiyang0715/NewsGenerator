@@ -40,12 +40,19 @@ message xwmm_vary_data
 '''
 
 import datetime
+import os
 import pprint
+import sys
 import time
 
 from PyAPI.JZpyapi import const
 from PyAPI.JZpyapi.apis.report import Finance
 from PyAPI.JZpyapi.client import SyncSocketClient
+
+cur_path = os.path.split(os.path.realpath(__file__))[0]
+file_path = os.path.abspath(os.path.join(cur_path, ".."))
+sys.path.insert(0, file_path)
+
 from base import NewsBase, logger
 from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
 
@@ -68,6 +75,7 @@ class WinList(NewsBase):
         self.target_table = 'news_generate_winlist'
         self.day = datetime.datetime(2020, 6, 4)
         self.get_time = datetime.datetime(2020, 6, 4, 15, 3)
+        self.fields = ['PubDate', 'PubType', 'Title', 'Content']
 
     def _create_table(self):
         sql = '''
@@ -96,7 +104,6 @@ class WinList(NewsBase):
                   'close',  # 当日价格
                   'org_net_buy',    # 机构净买
                   'net_buy',   # 总净买入  指标字段 1
-
                   'org_count',  # 机构数量 指标字段 2
                   ]
 
@@ -175,8 +182,9 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
         ret1, ret2 = self.get_result()
         final1 = self.gene_netbuy_data(ret1)
         final2 = self.gene_orgcount_data(ret2)
-        # print(final1)
-        # print(final2)
+        self._target_init()
+        self._save(self.target_client, final1, self.target_table, self.fields)
+        self._save(self.target_client, final2, self.target_table, self.fields)
 
 
 if __name__ == "__main__":
