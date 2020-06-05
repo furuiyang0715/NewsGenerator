@@ -22,25 +22,34 @@ from PyAPI.JZpyapi.apis.report import Rank
 from PyAPI.JZpyapi.client import SyncSocketClient
 from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
 
-client = SyncSocketClient(
-    API_HOST,
-    6700,
-    auth_username=AUTH_USERNAME,
-    auth_password=AUTH_PASSWORD,
-    login_on_connected=True,
-    auth_type=const.AUTH_TYPE_CLIENT,
-    max_retry=-1,
-    # heartbeat=3,
-)
 
-# 在 10 点半时间进行请求
-rank = Rank.sync_get_rank_net_purchase_by_code(
-    client, offset=0, count=10, stock_code_array=["$$沪深A股"]
-)
-for one in rank.row:
-    print("code:", one.stock_code)
-    for i in one.data:
-        if i.type == 1:
-            print("value:", struct.unpack("<f", i.value)[0])
-        elif i.type == 3:
-            print(bytes.fromhex(i.value.hex()).decode("utf-8"))
+class MorningTop10(object):
+    def __init__(self):
+        self.client = SyncSocketClient(
+            API_HOST,
+            6700,
+            auth_username=AUTH_USERNAME,
+            auth_password=AUTH_PASSWORD,
+            login_on_connected=True,
+            auth_type=const.AUTH_TYPE_CLIENT,
+            max_retry=-1,
+            # heartbeat=3,
+        )
+
+    def start(self):
+        # 在 10 点半时间进行请求
+        rank = Rank.sync_get_rank_net_purchase_by_code(
+            self.client, offset=0, count=10, stock_code_array=["$$沪深A股"]
+        )
+        for one in rank.row:
+            print("code:", one.stock_code)
+            for i in one.data:
+                if i.type == 1:
+                    print("value:", struct.unpack("<f", i.value)[0])
+                elif i.type == 3:
+                    print(bytes.fromhex(i.value.hex()).decode("utf-8"))
+
+
+if __name__ == "__main__":
+    morn = MorningTop10()
+    morn.start()
