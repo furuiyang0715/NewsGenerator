@@ -1,3 +1,4 @@
+import datetime
 import struct
 
 from PyAPI.JZpyapi import const
@@ -89,6 +90,7 @@ class LimitUpLb(NewsBase):
 
             else:
                 # 3连板山河药辅（300452）低开4.47%，成交金额为2.45亿；
+                # TODO 怎样认证高开、低开、平开
                 if item.get("rise_scope") < 0:
                     rise_str = "低开"
                 elif item.get("rise_scope") > 0:
@@ -105,7 +107,13 @@ class LimitUpLb(NewsBase):
                     self.re_money_data(item.get("limit_up_amount"))
                 )
 
-        print(content)
+        # print(content)
+        final = dict()
+        final['Title'] = title
+        final['Content'] = content
+        today_str = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min).strftime("%Y-%m-%d")
+        final['PubDate'] = "{} {}".format(today_str, items[0].get("update_time"))
+        print(final)
 
 
 if __name__ == "__main__":
