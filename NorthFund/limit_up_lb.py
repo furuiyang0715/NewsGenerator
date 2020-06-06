@@ -3,12 +3,14 @@ import struct
 from PyAPI.JZpyapi import const
 from PyAPI.JZpyapi.apis.report import Rank
 from PyAPI.JZpyapi.client import SyncSocketClient
+from base import logger, NewsBase
 from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
 
 
-class LimitUpLb(object):
+class LimitUpLb(NewsBase):
     """连板股今日竞价表现"""
     def __init__(self):
+        super(LimitUpLb, self).__init__()
         self.client = SyncSocketClient(
             API_HOST,
             6700,
@@ -68,6 +70,42 @@ class LimitUpLb(object):
                 break
 
         print(len(items))
+        title = '连板股今日竞价表现'
+        content = '连板股今日竞价表现如下：\n'
+        for item in items:
+            # print(item)
+            secu_code = item.get("code")[2:]
+            secu_abbr = self.get_juyuan_codeinfo(secu_code)[1]
+            if item.get("current_price") == item.get("limit_up_price"):
+                # logger.debug("涨停")
+                # 4连板个股江南高纤（600527）集合竞价涨停封板，封板金额为2.45亿，成交金额为2.45亿；
+                content += '{}连板个股{}（{}）集合竞价涨停封板，封板金额为{}，成交金额为{}；\n'.format(
+                    item.get("lb_count"),
+                    secu_abbr,
+                    secu_code,
+                    self.re_money_data(item.get('rise_close_amount')),
+                    self.re_money_data(item.get("limit_up_amount"))
+                )
+
+            else:
+                # 3连板山河药辅（300452）低开4.47%，成交金额为2.45亿；
+                if item.get("rise_scope") < 0:
+                    rise_str = "低开"
+                elif item.get("rise_scope") > 0:
+                    rise_str = '高开'
+                else:
+                    rise_str = '平开'
+
+                content += '{}连板{}（{}）{}{}%，成交金额为{}；\n'.format(
+                    item.get("lb_count"),
+                    secu_abbr,
+                    secu_code,
+                    rise_str,
+                    self.re_decimal_data(abs(item.get("rise_scope"))),
+                    self.re_money_data(item.get("limit_up_amount"))
+                )
+
+        print(content)
 
 
 if __name__ == "__main__":

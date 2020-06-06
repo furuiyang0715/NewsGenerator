@@ -222,6 +222,14 @@ class NewsBase(object):
             secu_codes.append(r.get("SecuCode"))
         return secu_codes
 
+    def get_juyuan_codeinfo(self, secu_code):
+        self._juyuan_init()
+        sql = 'SELECT SecuCode,InnerCode, SecuAbbr from SecuMain WHERE SecuCategory in (1, 2, 8) \
+and SecuMarket in (83, 90) \
+and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
+        ret = self.juyuan_client.select_one(sql)
+        return ret.get('InnerCode'), ret.get("SecuAbbr")
+
     @staticmethod
     def re_decimal_data(data):
         """一般小数保留前两位"""
