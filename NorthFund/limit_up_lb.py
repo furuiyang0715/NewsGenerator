@@ -22,8 +22,28 @@ class LimitUpLb(NewsBase):
             max_retry=-1,
             # heartbeat=3,
         )
+        self.target_table = 'news_generate_limituplb'
+        self.fields = ['PubDate', 'Title', 'Content']
+
+    def _create_table(self):
+        self._target_init()
+        sql = '''
+        CREATE TABLE IF NOT EXISTS `{}` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `PubDate` datetime NOT NULL COMMENT '资讯发布时间', 
+          `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题', 
+          `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
+          `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
+          `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+           PRIMARY KEY (`id`),
+           UNIQUE KEY `un2` (`PubDate`) 
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='连板股今日竞价表现';
+        '''.format(self.target_table)
+        self.target_client.insert(sql)
+        self.target_client.end()
 
     def start(self):
+        self._create_table()
         rank = Rank.sync_get_limit_up_lb_count(
             self.client,
             offset=0,
@@ -112,8 +132,10 @@ class LimitUpLb(NewsBase):
         final['Title'] = title
         final['Content'] = content
         today_str = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min).strftime("%Y-%m-%d")
+        # TODO 交易日的判断以及竞价结束的请求时间点
         final['PubDate'] = "{} {}".format(today_str, items[0].get("update_time"))
-        print(final)
+        # print(final)
+        self._save(self.target_client, final, self.target_table, self.fields)
 
 
 if __name__ == "__main__":
