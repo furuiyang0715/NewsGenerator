@@ -72,7 +72,7 @@ class GenFiance(NewsBase):
           `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
            PRIMARY KEY (`id`),
            UNIQUE KEY `un2` (`CompanyCode`, `EndDate`, `InfoPublDate`) USING BTREE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='深交所融资融券标的证券历史清单';
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='财务资讯生成表';
         '''.format(self.target_table)
         client.insert(sql)
         client.dispose()
