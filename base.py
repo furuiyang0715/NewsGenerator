@@ -202,7 +202,10 @@ class NewsBase(object):
     def total_company_codes(self):
         """获取涵盖在统计范围内的全部公司代码 按照文档的写法 是只需要 A 股的"""
         juyuan = self._init_pool(self.juyuan_cfg)
-        sql = '''select CompanyCode, SecuCode, InnerCode from secumain where SecuCategory = 1; '''
+        # sql = '''select CompanyCode, SecuCode, InnerCode from secumain where SecuCategory = 1; '''
+        sql = '''SELECT InnerCode,CompanyCode,SecuCode,SecuAbbr FROM secumain WHERE SecuCategory=1 \
+AND SecuMarket IN(83,90) AND ListedState=1 ORDER BY SecuCode DESC;
+        '''
         ret = juyuan.select_all(sql)
         _map = {}
         for r in ret:
