@@ -156,6 +156,7 @@ class NorthFund(NewsBase):
 
                 if item in self.invalid_items:
                     continue
+                # 这里是按照产品的要求去添加的一个功能: 每生成一条新的数据突破绝对值更大的阈值 就将之前 5 min 内突破的较小阈值的一条数据删除
                 _threshold = item.get("Threshold")
                 _dt = item.get("DateTime")
                 before_dt = _dt - datetime.timedelta(minutes=5)
