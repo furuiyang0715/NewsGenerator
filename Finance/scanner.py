@@ -30,12 +30,13 @@ class Scanner(NewsBase):
             traceback.print_exc()
 
     def _scan(self, _today, _now):
-        """不断扫描数据库 找出发布时间等于扫描时间的记录"""
+        """程序入口: 不断扫描数据库 找出发布时间等于扫描时间的记录"""
         # 初始化连接池
         self.juyuan = self._init_pool(self.juyuan_cfg)
 
         # 与产品沟通之后 这里做了一个调整 就是将"净利润"改为"归属于母公司所有者的净利润"
         # NetProfit --> NPParentCompanyOwners
+        # 这里核心的查询条件是发布时间在今天的 0 点到次日的 0 点之间的数据 发布时间是以天为单位的 只会落在第一个查询条件 _today 上
         fields_str = "CompanyCode, EndDate, InfoPublDate, IfAdjusted, IfMerged, NPParentCompanyOwners, OperatingRevenue, BasicEPS"
         sql = '''select {} from {} where IfMerged=1 \
 and NetProfit is not NULL \

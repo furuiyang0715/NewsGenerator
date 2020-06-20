@@ -18,7 +18,9 @@ def task():
 
 
 def history_task():
+    """生成历史资讯数据"""
     _today = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)
+    # 从指定的时间一直生成到昨天
     _yester_day = _today - datetime.timedelta(days=1)
     # _start = _yester_day - datetime.timedelta(days=180)
     _start = datetime.datetime(2020, 2, 18)
