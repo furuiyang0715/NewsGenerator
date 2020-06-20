@@ -18,10 +18,10 @@ from base import NewsBase
 from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
 
 
-class DayTop10Saver(NewsBase):
-    """每日流入排行"""
+class DayTopsSaver(NewsBase):
+    """保存每日全部的流入排行数据"""
     def __init__(self):
-        super(DayTop10Saver, self).__init__()
+        super(DayTopsSaver, self).__init__()
         self.client = SyncSocketClient(
             API_HOST,
             6700,
@@ -139,7 +139,7 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
 
 
 def task():
-    DayTop10Saver().start()
+    DayTopsSaver().start()
 
 
 if __name__ == "__main__":
@@ -150,3 +150,17 @@ if __name__ == "__main__":
         # print("当前调度系统中的任务列表 {}".format(schedule.jobs))
         schedule.run_pending()
         time.sleep(30)
+
+
+'''进入跟目录执行 保存每日流入排行数据
+docker build -f DockerfileUseApi -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 . 
+docker push registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2  
+sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2
+ 
+sudo docker run --log-opt max-size=10m --log-opt max-file=3 -itd \
+--env LOCAL=0 \
+--name save_daytop \
+registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 \
+python Funds/day_tops_save.py
+
+'''
