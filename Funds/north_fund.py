@@ -219,3 +219,17 @@ if __name__ == "__main__":
         else:
             north.start(_now)
             time.sleep(10)
+
+
+'''进入根目录进行部署 
+docker build -f Dockerfile -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1 .
+docker push registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1
+sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1
+
+# 北向资金
+sudo docker run --log-opt max-size=10m --log-opt max-file=3 -itd \
+--env LOCAL=0 \
+--name generate_northfund \
+registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1 \
+python Funds/north_fund.py
+'''
