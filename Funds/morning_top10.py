@@ -5,7 +5,7 @@
 
 内容：
 4月15日大单金额流入前十名个股如下，数据取自（4月15日 10:30）
-山河药辅（300452）+1.54%，主力净买额1200万
+山河药辅（300452）+1.54%，主力净买额1200万    (实时涨跌幅)
 皇氏集团（002329）+1.54%，主力净买额1200万
 以岭药业（002603）+1.54%，主力净买额1200万
 海伦哲（300201）  +1.54%，主力净买额1200万
@@ -46,17 +46,18 @@ class MorningTop10(NewsBase):
 
         rank_num = 1
         for one in rank.row:
+            item = {}
             for i in one.data:
                 if i.type == 1:
-                    item = {}
                     secu_code = one.stock_code[2:]
                     item['secu_code'] = secu_code
                     item['value'] = struct.unpack("<f", i.value)[0]
                     item['rank_num'] = rank_num
-                    rank_num += 1
-                    print(item)
                 elif i.type == 3:
                     print(bytes.fromhex(i.value.hex()).decode("utf-8"))
+            rank_num += 1
+
+            print(item)    # {'secu_code': '300059', 'value': 7.079639434814453, 'rank_num': 1}
 
 
 if __name__ == "__main__":
