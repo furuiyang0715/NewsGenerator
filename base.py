@@ -218,7 +218,9 @@ AND SecuMarket IN(83,90) AND ListedState=1 ORDER BY SecuCode DESC;
     def a_secucategory_codes(self):
         """获取 A 股证券代码列表"""
         juyuan = self._init_pool(self.juyuan_cfg)
-        sql = '''select SecuCode from secumain where SecuCategory = 1;'''
+        # sql = '''select SecuCode from secumain where SecuCategory = 1;'''
+        sql = '''SELECT InnerCode,CompanyCode,SecuCode,SecuAbbr FROM secumain WHERE SecuCategory=1 \
+        AND SecuMarket IN(83,90) AND ListedState=1 ORDER BY SecuCode DESC;'''
         ret = juyuan.select_all(sql)
         secu_codes = []
         for r in ret:

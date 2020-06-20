@@ -266,3 +266,15 @@ if __name__ == "__main__":
         # print("当前调度系统中的任务列表 {}".format(schedule.jobs))
         schedule.run_pending()
         time.sleep(30)
+
+
+'''进入到根目录下进行部署: 机构类汇总 首次评级和多机构评级同时生成 
+docker build -f Dockerfile -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1 . 
+docker push registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1
+sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1 
+sudo docker run --log-opt max-size=10m --log-opt max-file=3 -itd \
+--env LOCAL=1 \
+--name ora \
+registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1 \
+python OrganizationEvaluation/huddle.py
+'''
