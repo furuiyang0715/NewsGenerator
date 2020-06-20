@@ -38,12 +38,12 @@ class MorningTop10(NewsBase):
             # heartbeat=3,
         )
 
-    def start(self):
+    def get_rank10(self):
         # 在 10 点半时间进行请求
         rank = Rank.sync_get_rank_net_purchase_by_code(
             self.client, offset=0, count=10, stock_code_array=["$$沪深A股"]
         )
-
+        items = []
         rank_num = 1
         for one in rank.row:
             item = {}
@@ -58,6 +58,32 @@ class MorningTop10(NewsBase):
             rank_num += 1
 
             print(item)    # {'secu_code': '300059', 'value': 7.079639434814453, 'rank_num': 1}
+            items.append(item)
+
+        return items
+
+    def update_real_risepercent(self, items: list):
+        '''查询并且更入股票的实时涨跌幅'''
+        codes = [item.get("secu_code") for item in items]
+        print(codes)
+        # TODO 对 codes 前面加上 SH 或者 SZ
+
+        rank = Rank.sync_get_rank_by_rise_scope(self.client, stock_code_array=codes)
+        for one in rank.row:
+            print("code:", one.stock_code)
+            for i in one.data:
+                if i.type == 1:
+                    print("value:", struct.unpack("<f", i.value)[0])
+                elif i.type == 4:
+                    print("value:", struct.unpack("<i", i.value)[0])
+                elif i.type == 2:
+                    print("value:", struct.unpack("<d", i.value)[0])
+                elif i.type == 3:
+                    print("value:", bytes.fromhex(i.value.hex()).decode("utf-8"))
+
+    def start(self):
+        top10items = self.get_rank10()
+        self.update_real_risepercent(top10items)
 
 
 if __name__ == "__main__":
