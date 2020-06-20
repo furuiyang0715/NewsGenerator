@@ -3,9 +3,11 @@ import os
 import sys
 
 from apscheduler.schedulers.blocking import BlockingScheduler
+
 cur_path = os.path.split(os.path.realpath(__file__))[0]
 file_path = os.path.abspath(os.path.join(cur_path, ".."))
 sys.path.insert(0, file_path)
+
 from base import logger
 from Finance.scanner import Scanner
 
@@ -56,3 +58,24 @@ if __name__ == "__main__":
     except Exception as e:
         logger.info(f"本次任务执行出错{e}")
         sys.exit(0)
+
+
+'''部署 进入根目录下执行
+docker build -f Dockerfile -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1 .
+docker push registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1
+sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1
+
+# remote
+sudo docker run --log-opt max-size=10m --log-opt max-file=3 -itd \
+--env LOCAL=0 \
+--name generate_finance \
+registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1 \
+python Finance/main.py
+
+# local
+sudo docker run --log-opt max-size=10m --log-opt max-file=3 -itd \
+--env LOCAL=1 \
+--name generate_finance \
+registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1 \
+python Finance/main.py
+'''

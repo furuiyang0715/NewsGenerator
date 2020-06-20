@@ -10,6 +10,7 @@ class Selector(NewsBase):
         self._target_init()
         Acompany_codes = tuple(self.total_company_codes().keys())
         sql = 'delete from {} where  CompanyCode not in {}; '.format(self.table_name, Acompany_codes)
+        # print(sql)
         count = self.target_client.delete(sql)
         print(count)
 
