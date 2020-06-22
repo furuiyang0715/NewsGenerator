@@ -23,6 +23,25 @@ class MorningTop10(NewsBase):
             max_retry=-1,
             # heartbeat=3,
         )
+        self.target_table = 'news_generate_morningtop10'
+        self.fields = ["Date", "Title", "Content"]
+
+    def _create_table(self):
+        self._target_init()
+        sql = '''
+        CREATE TABLE IF NOT EXISTS `{}` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `Date` datetime NOT NULL COMMENT '资讯发布时间', 
+          `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题', 
+          `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
+          `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
+          `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+           PRIMARY KEY (`id`),
+           UNIQUE KEY `un2` (`Date`) 
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='资讯-早盘主力十大净买个股';
+        '''.format(self.target_table)
+        self.target_client.insert(sql)
+        self.target_client.end()
 
     def get_rank10(self):
         rank = Rank.sync_get_rank_net_purchase_by_code(
@@ -96,12 +115,16 @@ class MorningTop10(NewsBase):
         return final
 
     def start(self):
+        self._create_table()
         top10info = self.get_rank10()
         # for one in top10info:
         #     print(one)
 
         to_insert = self.get_content(top10info)
         # print(pprint.pformat(to_insert))
+        self._target_init()
+        ret = self._save(self.target_client, to_insert, self.target_table, self.fields)
+        print(ret)
 
 
 if __name__ == "__main__":
