@@ -56,19 +56,31 @@ class MorningTop10(NewsBase):
                 elif i.type == 3:
                     print(bytes.fromhex(i.value.hex()).decode("utf-8"))
             rank_num += 1
-
-            print(item)    # {'secu_code': '300059', 'value': 7.079639434814453, 'rank_num': 1}
+            # print(item)    # {'secu_code': '300059', 'value': 7.079639434814453, 'rank_num': 1}
             items.append(item)
 
         return items
 
     def update_real_risepercent(self, items: list):
-        '''查询并且更入股票的实时涨跌幅'''
+        """
+        查询并且更入股票的实时涨跌幅
+        """
         codes = [item.get("secu_code") for item in items]
-        print(codes)
-        # TODO 对 codes 前面加上 SH 或者 SZ
+        # print(codes)
+        # TODO A 股 codes 前面加上 SH 或者 SZ
+        p_codes = []
+        for code in codes:
+            p_code = None
+            if code.startswith("6"):
+                p_code = "SH" + code
+            elif code.startswith("0") or code.startswith("3"):
+                p_code = "SZ" + code
+            if p_code:
+                p_codes.append(p_code)
 
-        rank = Rank.sync_get_rank_by_rise_scope(self.client, stock_code_array=codes)
+        # print(p_codes)
+        print("* " * 20)
+        rank = Rank.sync_get_rank_by_rise_scope(self.client, stock_code_array=p_codes)
         for one in rank.row:
             print("code:", one.stock_code)
             for i in one.data:
