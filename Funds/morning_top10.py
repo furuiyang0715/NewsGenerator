@@ -43,6 +43,29 @@ class MorningTop10(NewsBase):
         self.target_client.insert(sql)
         self.target_client.end()
 
+    def dynamic_get_rank10(self):
+        """早盘十大主力净买个股中去掉中文简称以 N 开头的个股
+        比较严谨的做法是动态多次请求
+        为了减少请求次数 比较粗暴地请求 50 个 从其中筛选出 10 个
+        """
+        items = self.get_rank10()
+
+        # for one in items:
+        #     print(one)
+        #
+        # print("* " * 20)
+
+        processed_items = []
+        count = 0
+        for item in items:
+            if not item["secu_abbr"].startswith("N"):
+                processed_items.append(item)
+                count += 1
+                if count == 10:
+                    break
+
+        return processed_items
+
     def get_rank10(self):
         rank = Rank.sync_get_rank_net_purchase_by_code(
             self.client, offset=0, count=10, stock_code_array=["$$沪深A股"]
@@ -116,12 +139,14 @@ class MorningTop10(NewsBase):
 
     def start(self):
         self._create_table()
-        top10info = self.get_rank10()
+        top10info = self.dynamic_get_rank10()
+
         # for one in top10info:
         #     print(one)
 
         to_insert = self.get_content(top10info)
         # print(pprint.pformat(to_insert))
+
         self._target_init()
         ret = self._save(self.target_client, to_insert, self.target_table, self.fields)
         print(ret)
