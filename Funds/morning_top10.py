@@ -1,7 +1,15 @@
 import datetime
+import os
 import pprint
 import struct
 import sys
+import time
+
+import schedule
+
+cur_path = os.path.split(os.path.realpath(__file__))[0]
+file_path = os.path.abspath(os.path.join(cur_path, ".."))
+sys.path.insert(0, file_path)
 
 from PyAPI.JZpyapi import const
 from PyAPI.JZpyapi.apis.report import Rank
@@ -149,9 +157,33 @@ class MorningTop10(NewsBase):
 
         self._target_init()
         ret = self._save(self.target_client, to_insert, self.target_table, self.fields)
-        print(ret)
+        if ret:
+            self.ding("早盘十大成交股资讯生成\n {}".format(pprint.pformat(to_insert)))
+
+
+def task():
+    morn = MorningTop10()
+    morn.start()
 
 
 if __name__ == "__main__":
-    morn = MorningTop10()
-    morn.start()
+    # task()
+
+    schedule.every().day.at("10:30").do(task)
+
+    while True:
+        # print("当前调度系统中的任务列表 {}".format(schedule.jobs))
+        schedule.run_pending()
+        time.sleep(10)
+
+'''进入根目录下进行部署 
+docker build -f DockerfileUseApi -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 .
+docker push registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 
+sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2
+
+sudo docker run --log-opt max-size=10m --log-opt max-file=3 -itd \
+--env LOCAL=0 \
+--name generate_morningtop10 \
+registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 \
+python Funds/morning_top10.py
+'''
