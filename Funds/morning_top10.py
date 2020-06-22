@@ -51,8 +51,8 @@ class MorningTop10(NewsBase):
                     # print(bytes.fromhex(i.value.hex()).decode("utf-8"))
                     pass
 
-            item["main_buy"] = main_buy
-            item['rise_percent'] = rise_percent
+            item["main_buy"] = self.re_money_data(main_buy)
+            item['rise_percent'] = self.re_decimal_data(rise_percent)
             item['rank_num'] = num
             num += 1
             items.append(item)
@@ -97,11 +97,11 @@ class MorningTop10(NewsBase):
 
     def start(self):
         top10info = self.get_rank10()
-        for one in top10info:
-            print(one)
+        # for one in top10info:
+        #     print(one)
 
         to_insert = self.get_content(top10info)
-        print(to_insert)
+        # print(pprint.pformat(to_insert))
 
 
 if __name__ == "__main__":
