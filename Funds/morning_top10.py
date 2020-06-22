@@ -20,7 +20,7 @@ import struct
 from PyAPI.JZpyapi import const
 from PyAPI.JZpyapi.apis.report import Rank
 from PyAPI.JZpyapi.client import SyncSocketClient
-from base import NewsBase
+from base import NewsBase, logger
 from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
 
 
@@ -66,7 +66,6 @@ class MorningTop10(NewsBase):
         查询并且更入股票的实时涨跌幅
         """
         codes = [item.get("secu_code") for item in items]
-        # print(codes)
         # TODO A 股 codes 前面加上 SH 或者 SZ
         p_codes = []
         for code in codes:
@@ -77,21 +76,27 @@ class MorningTop10(NewsBase):
                 p_code = "SZ" + code
             if p_code:
                 p_codes.append(p_code)
-
-        # print(p_codes)
-        print("* " * 20)
+        logger.info(p_codes)
         rank = Rank.sync_get_rank_by_rise_scope(self.client, stock_code_array=p_codes)
         for one in rank.row:
             print("code:", one.stock_code)
+            rise_p = None
             for i in one.data:
                 if i.type == 1:
-                    print("value:", struct.unpack("<f", i.value)[0])
+                    # print("value:", struct.unpack("<f", i.value)[0])
+                    rise_p = struct.unpack("<f", i.value)[0]
                 elif i.type == 4:
-                    print("value:", struct.unpack("<i", i.value)[0])
+                    # print("value:", struct.unpack("<i", i.value)[0])
+                    rise_p = struct.unpack("<i", i.value)[0]
                 elif i.type == 2:
-                    print("value:", struct.unpack("<d", i.value)[0])
+                    # print("value:", struct.unpack("<d", i.value)[0])
+                    rise_p = struct.unpack("<d", i.value)[0]
                 elif i.type == 3:
-                    print("value:", bytes.fromhex(i.value.hex()).decode("utf-8"))
+                    # print("value:", bytes.fromhex(i.value.hex()).decode("utf-8"))
+                    rise_p = bytes.fromhex(i.value.hex()).decode("utf-8")
+                else:
+                    raise ValueError("解析错误")
+            print(rise_p)
 
     def start(self):
         top10items = self.get_rank10()
