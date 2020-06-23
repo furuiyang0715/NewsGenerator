@@ -190,3 +190,16 @@ if __name__ == "__main__":
         # print("当前调度系统中的任务列表 {}".format(schedule.jobs))
         schedule.run_pending()
         time.sleep(10)
+
+
+'''进入根目录下进行部署 
+docker build -f DockerfileUseApi -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 .
+docker push registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 
+sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2
+
+sudo docker run --log-opt max-size=10m --log-opt max-file=3 -itd \
+--env LOCAL=0 \
+--name generate_limitup \
+registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 \
+python Funds/limit_up_lb.py
+'''
