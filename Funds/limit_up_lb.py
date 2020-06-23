@@ -1,5 +1,7 @@
 import datetime
+import pprint
 import struct
+import sys
 
 from PyAPI.JZpyapi import const
 from PyAPI.JZpyapi.apis.report import Rank
@@ -72,6 +74,7 @@ class LimitUpLb(NewsBase):
             # stock_code_array=["$$今日涨停"],
         )
         # 返回的value从上往下依次是:连板数量,涨停封板金额,涨幅,涨停板成交额,最新价，涨停价，跌停价，更新时间
+        #                         连板数量,涨停封板金额,涨幅,涨停板成交额,最新价，涨停价，跌停价，更新时间，开盘价，昨收盘价
         fields = ["lb_count",  # 连板数量
                   'rise_close_amount',  # 涨停封板金额
                   'rise_scope',  # 涨幅
@@ -80,6 +83,8 @@ class LimitUpLb(NewsBase):
                   'limit_up_price',  # 涨停价
                   'limit_down_price',  # 跌停价
                   'update_time',  # 更新时间
+                  'open',   # 开盘价
+                  'pre_close',  # 昨收盘价
                   'code',  # 证券代码
                   ]
         items = []
@@ -97,25 +102,27 @@ class LimitUpLb(NewsBase):
                     value = bytes.fromhex(i.value.hex()).decode("utf-8")
                 else:
                     raise ValueError
-
-                # print(value)
                 values.append(value)
 
             values.append(code)
             item = dict(zip(fields, values))
             items.append(item)
             if item.get("lb_count") < 2:
+                # 将触发不符合条件的项目删除
+                items.remove(item)
                 break
 
-        print(len(items))
+        # print(len(items))
+        # for item in items:
+        #     print(item)
+
         title = '连板股今日竞价表现'
         content = '连板股今日竞价表现如下：\n'
         for item in items:
-            # print(item)
             secu_code = item.get("code")[2:]
             secu_abbr = self.get_juyuan_codeinfo(secu_code)[1]
             if item.get("current_price") == item.get("limit_up_price"):
-                # logger.debug("涨停")
+                logger.debug("涨停")
                 # 4连板个股江南高纤（600527）集合竞价涨停封板，封板金额为2.45亿，成交金额为2.45亿；
                 content += '{}连板个股{}（{}）集合竞价涨停封板，封板金额为{}，成交金额为{}；\n'.format(
                     item.get("lb_count"),
@@ -127,13 +134,17 @@ class LimitUpLb(NewsBase):
 
             else:
                 # 3连板山河药辅（300452）低开4.47%，成交金额为2.45亿；
-                # TODO 怎样认证高开、低开、平开
-                if item.get("rise_scope") < 0:
-                    rise_str = "低开"
-                elif item.get("rise_scope") > 0:
-                    rise_str = '高开'
-                else:
+                # 认证高开、低开、平开
+                # print(item.get("open"), type(item.get("open")))
+                # print(item.get("pre_close"), type(item.get("open")))
+                if item.get("open") == item.get("pre_close"):
                     rise_str = '平开'
+                elif item.get("open") < item.get("pre_close"):
+                    rise_str = "低开"
+                else:
+                    rise_str = '高开'
+
+                logger.debug(rise_str)
 
                 content += '{}连板{}（{}）{}{}%，成交金额为{}；\n'.format(
                     item.get("lb_count"),
@@ -151,8 +162,8 @@ class LimitUpLb(NewsBase):
         today_str = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min).strftime("%Y-%m-%d")
         # TODO 交易日的判断以及竞价结束的请求时间点
         final['PubDate'] = "{} {}".format(today_str, items[0].get("update_time"))
-        # print(final)
-        self._save(self.target_client, final, self.target_table, self.fields)
+        print(pprint.pformat(final))
+        # self._save(self.target_client, final, self.target_table, self.fields)
 
 
 if __name__ == "__main__":
