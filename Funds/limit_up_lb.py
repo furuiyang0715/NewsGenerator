@@ -1,10 +1,15 @@
 import datetime
+import os
 import pprint
 import struct
 import sys
 import time
 
 import schedule
+
+cur_path = os.path.split(os.path.realpath(__file__))[0]
+file_path = os.path.abspath(os.path.join(cur_path, ".."))
+sys.path.insert(0, file_path)
 
 from PyAPI.JZpyapi import const
 from PyAPI.JZpyapi.apis.report import Rank
