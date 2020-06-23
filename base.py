@@ -331,6 +331,13 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
         ret = float("%.2f" % (data / 10**4))
         return ret
 
-    def create_sql_table(self):
-        # TODO 进行类似于 sqlalchemy 的简单封装
-        pass
+    def is_trading_day(self, day):
+        """
+        根据聚源表 QT_TradingDayNew 判断当天是否是交易日
+        """
+        self._juyuan_init()
+        # ID | TradingDate | IfTradingDay | SecuMarket | IfWeekEnd | IfMonthEnd | IfQuarterEnd | IfYearEnd | XGRQ | JSID
+        sql = 'select IfTradingDay from {} where TradingDate = "{}" and SecuMarket = 83; '.format('QT_TradingDayNew', day)
+        ret = self.juyuan_client.select_one(sql).get("IfTradingDay")
+        is_trading = True if ret == 1 else False
+        return is_trading

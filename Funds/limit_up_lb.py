@@ -2,6 +2,9 @@ import datetime
 import pprint
 import struct
 import sys
+import time
+
+import schedule
 
 from PyAPI.JZpyapi import const
 from PyAPI.JZpyapi.apis.report import Rank
@@ -9,9 +12,9 @@ from PyAPI.JZpyapi.client import SyncSocketClient
 from base import logger, NewsBase
 from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
 
-'''
+'''eg.
 连板股今日竞价表现
-条件：连板数>=2的个股，今日竞价数据，竞价结束后发布
+条件：连板数>=2的个股，今日竞价数据，竞价结束后发布(竞价结束的时间点是 )
 标题：连板股今日竞价表现
 内容：
 连板股今日竞价表现如下：
@@ -43,6 +46,7 @@ class LimitUpLb(NewsBase):
         )
         self.target_table = 'news_generate_limituplb'
         self.fields = ['PubDate', 'Title', 'Content']
+        self.today_str = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min).strftime("%Y-%m-%d")
 
     def _create_table(self):
         self._target_init()
@@ -63,6 +67,13 @@ class LimitUpLb(NewsBase):
 
     def start(self):
         self._create_table()
+        # 交易日的判断以及
+        is_trading = self.is_trading_day(self.today_str)
+        # is_trading = self.is_trading_day("2020-06-25")
+        if not is_trading:
+            logger.warning("非A股交易日")
+            return
+
         rank = Rank.sync_get_limit_up_lb_count(
             self.client,
             offset=0,
@@ -159,13 +170,23 @@ class LimitUpLb(NewsBase):
         final = dict()
         final['Title'] = title
         final['Content'] = content
-        today_str = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min).strftime("%Y-%m-%d")
-        # TODO 交易日的判断以及竞价结束的请求时间点
-        final['PubDate'] = "{} {}".format(today_str, items[0].get("update_time"))
-        print(pprint.pformat(final))
-        # self._save(self.target_client, final, self.target_table, self.fields)
+        # today_str = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min).strftime("%Y-%m-%d")
+        # 竞价结束的时间定在每天的 9:25 程序在每天的 9:25 运行
+        final['PubDate'] = "{} {}".format(self.today_str, items[0].get("update_time"))
+        # print(pprint.pformat(final))
+        self.ding("连板股今日竞价表现: \n{}".format(pprint.pformat(final)))
+        self._save(self.target_client, final, self.target_table, self.fields)
+
+
+def task():
+    LimitUpLb().start()
 
 
 if __name__ == "__main__":
-    lp = LimitUpLb()
-    lp.start()
+    # task()
+    schedule.every().day.at("09:25").do(task)
+
+    while True:
+        # print("当前调度系统中的任务列表 {}".format(schedule.jobs))
+        schedule.run_pending()
+        time.sleep(10)
