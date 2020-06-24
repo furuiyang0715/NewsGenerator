@@ -24,10 +24,12 @@ from collections import defaultdict
 from PyAPI.JZpyapi import const
 from PyAPI.JZpyapi.apis.report import TopicInvest, Rank
 from PyAPI.JZpyapi.client import SyncSocketClient
+from base import NewsBase
 
 
-class OpenUnusual(object):
+class OpenUnusual(NewsBase):
     def __init__(self):
+        super(OpenUnusual, self).__init__()
         self.client = SyncSocketClient(
             # "192.168.0.241",
             "47.107.21.122",

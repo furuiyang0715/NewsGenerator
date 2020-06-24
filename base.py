@@ -15,7 +15,7 @@ from configs import (SPIDER_MYSQL_HOST, SPIDER_MYSQL_PORT, SPIDER_MYSQL_USER, SP
                      SPIDER_MYSQL_DB, PRODUCT_MYSQL_HOST, PRODUCT_MYSQL_PORT, PRODUCT_MYSQL_USER,
                      PRODUCT_MYSQL_PASSWORD, PRODUCT_MYSQL_DB, JUY_HOST, JUY_PORT, JUY_USER, JUY_PASSWD,
                      JUY_DB, DC_HOST, DC_PORT, DC_USER, DC_PASSWD, DC_DB, SECRET, TOKEN, LOCAL, BG_HOST, BG_PORT,
-                     BG_USER, BG_PASSWD, BG_DB)
+                     BG_USER, BG_PASSWD, BG_DB, THEME_HOST, THEME_PORT, THEME_USER, THEME_PASSWD, THEME_DB)
 from sql_pool import PyMysqlPoolBase
 
 if LOCAL:
@@ -26,6 +26,14 @@ logger = logging.getLogger(__name__)
 
 
 class NewsBase(object):
+    theme_cfg = {
+        "host": THEME_HOST,
+        "port": THEME_PORT,
+        "user": THEME_USER,
+        "password": THEME_PASSWD,
+        "db": THEME_DB,
+
+    }
 
     spider_cfg = {  # 爬虫库
         "host": SPIDER_MYSQL_HOST,
@@ -74,6 +82,7 @@ class NewsBase(object):
         self.dc_client = None
         self.target_client = None
         self.juyuan_client = None
+        self.theme_client = None
 
     def _dc_init(self):
         if not self.dc_client:
@@ -87,6 +96,10 @@ class NewsBase(object):
         if not self.juyuan_client:
             self.juyuan_client = self._init_pool(self.juyuan_cfg)
 
+    def _theme_init(self):
+        if not self.theme_client:
+            self.theme_client = self._init_pool(self.theme_cfg)
+
     def __del__(self):
         if self.dc_client:
             self.dc_client.dispose()
@@ -94,6 +107,8 @@ class NewsBase(object):
             self.target_client.dispose()
         if self.juyuan_client:
             self.juyuan_client.dispose()
+        if self.theme_client:
+            self.theme_client.dispose()
 
     def _init_pool(self, cfg: dict):
         """
