@@ -1,6 +1,6 @@
 '''
 开盘异动盘口
-条件：取主题猎手-盘口异动9：36分时，出现涨停个股且涨幅大于1.5%的异动盘口，再取两个涨幅最高的跟涨个股
+条件：取主题猎手-盘口异动9：36分时，出现涨停个股且涨幅大于1.5%的异动盘口，(获取领涨股？ )再取两个涨幅最高的跟涨个股
 标题：5G板块开盘活跃,涨幅高达1.5%
 内容：
 5G板块开盘活跃，盘口涨幅达1.5%，华星创业一字涨停，麦捷科技大涨9%，有方科技涨8%。
@@ -118,17 +118,18 @@ class OpenUnusual(NewsBase):
         print("# " * 20)
         final_items = {}
         for key, code_infos in all_block_stats_map.items():
-            # if key in rise_block_codes:
-            for code_info in code_infos:
-                if code_info.get("stats") in (3, 4):
-                    final_items[key] = code_infos
-                    break    # 退出内层循环
+            if key in rise_block_codes:
+                final_items[key] = code_infos
+                # for code_info in code_infos:
+                #     if code_info.get("stats") in (3, 4):
+                #         final_items[key] = code_infos
+                #         break    # 退出内层循环
 
         print(pprint.pformat(final_items))
         if final_items:
-            self.get_content(final_items)
+            self.get_content(final_items, block_rise_map)
 
-    def get_content(self, items):
+    def get_content(self, datas: dict, block_rise_map: dict):
         """
         {'IX850039': [{'code': 'SZ300459', 'stats': 3},
                       {'code': 'SH603003', 'stats': 1},
@@ -139,8 +140,36 @@ class OpenUnusual(NewsBase):
         内容：
         5G板块开盘活跃，盘口涨幅达1.5%，华星创业一字涨停，麦捷科技大涨9%，有方科技涨8%。
         """
+        self._theme_init()
+        for block_code, block_info in datas.items():
+            sql = """select name from block where code = '{}';""".format(block_code)
+            block_name = self.theme_client.select_one(sql)
+            if block_name:
+                block_name = block_name.get("name")
+            else:
+                raise
+            block_rise = self.re_decimal_data(block_rise_map.get(block_code))
+            title = '{}开盘活跃,涨幅高达{}%'.format(block_name, block_rise)
+            count = 1
+            base_content = ''
+            for one in block_info:
+                if count > 3:
+                    break
+                code = one.get("code")
+                # 获取排在前面的两个的涨幅
+                content = self.get_code_rise_info(code)
+                base_content += content
+                count += 1
+            content = title + "," + base_content
+            print(block_name)
+            print(title)
+            print(content)
 
-        pass
+    def get_code_rise_info(self, code):
+        # 获取股票对应的涨跌幅信息
+
+
+        return ''
 
 
 if __name__ == "__main__":
