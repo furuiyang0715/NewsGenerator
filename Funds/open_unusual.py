@@ -50,14 +50,10 @@ class OpenUnusual(NewsBase):
         now_ts = int(time.mktime(target_time.timetuple()))
         res = TopicInvest.sync_get_topic_info(self.client, ts=now_ts)
 
-        # (1) 拿到全部的版块列表 并且保存全部的版块数据
+        # 拿到全部的版块列表 并且保存全部的版块数据
         block_stats_map = defaultdict(list)
-        # block_codes = []
         for block in res.msg_array:
-            print(block)
             block_code = block.block_code
-            # block_codes.append(block_code)
-
             stock_monitor = block.stock_monitor
             for one in stock_monitor:
                 code = one.stock_code
@@ -65,11 +61,10 @@ class OpenUnusual(NewsBase):
                 block_stats_map[block_code].append({"code": code, "stats": stats})
 
         print(pprint.pformat(block_stats_map))
-        # print(block_codes)
         return block_stats_map
 
     def get_block_rise_map(self, all_block_codes):
-        # (2) 查所有板块的实时涨幅，筛选出大于 1.5 的
+        # 查所有板块的实时涨幅，筛选出大于 1.5 的
         block_rise_map = {}
         rank = Rank.sync_get_rank_by_bk(self.client,
                                         offset=0,
@@ -78,7 +73,6 @@ class OpenUnusual(NewsBase):
                                         )
         for one in rank.row:
             block_code = one.stock_code
-            # print("code:", block_code)
             value = None
             for i in one.data:
                 if i.type == 1:
@@ -115,6 +109,7 @@ class OpenUnusual(NewsBase):
         all_block_codes = list(all_block_stats_map.keys())
         block_rise_map = self.get_block_rise_map(all_block_codes)
         rise_block_codes = list(block_rise_map.keys())
+
         print("# " * 20)
         final_items = {}
         for key, code_infos in all_block_stats_map.items():
@@ -125,11 +120,11 @@ class OpenUnusual(NewsBase):
                 #         final_items[key] = code_infos
                 #         break    # 退出内层循环
 
-        print(pprint.pformat(final_items))
+        # print(pprint.pformat(final_items))
         if final_items:
             self.get_content(final_items, block_rise_map)
 
-    def get_content(self, datas: dict, block_rise_map: dict):
+    def get_content(self, datas: dict, block_rise_map):
         """
         {'IX850039': [{'code': 'SZ300459', 'stats': 3},
                       {'code': 'SH603003', 'stats': 1},
@@ -150,26 +145,41 @@ class OpenUnusual(NewsBase):
                 raise
             block_rise = self.re_decimal_data(block_rise_map.get(block_code))
             title = '{}开盘活跃,涨幅高达{}%'.format(block_name, block_rise)
+
             count = 1
             base_content = ''
             for one in block_info:
                 if count > 3:
                     break
                 code = one.get("code")
-                # 获取排在前面的两个的涨幅
                 content = self.get_code_rise_info(code)
                 base_content += content
                 count += 1
             content = title + "," + base_content
+
             print(block_name)
             print(title)
             print(content)
 
     def get_code_rise_info(self, code):
-        # 获取股票对应的涨跌幅信息
-
-
-        return ''
+        # 查询股票的实时涨跌幅
+        rank = Rank.sync_get_rank_by_rise_scope(
+            self.client, stock_code_array=[code]
+        )
+        secu_abbr = self.get_juyuan_codeinfo(code[2:])[1]
+        for one in rank.row:
+            for i in one.data:
+                if i.type == 1:
+                    value = struct.unpack("<f", i.value)[0]
+                elif i.type == 4:
+                    value = struct.unpack("<i", i.value)[0]
+                elif i.type == 2:
+                    value = struct.unpack("<d", i.value)[0]
+                elif i.type == 3:
+                    value = bytes.fromhex(i.value.hex()).decode("utf-8")
+                else:
+                    raise
+                return "{}涨{}%,".format(secu_abbr, self.re_decimal_data(value))
 
 
 if __name__ == "__main__":
