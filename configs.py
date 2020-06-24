@@ -28,6 +28,13 @@ TEST_MYSQL_USER = env.get("TEST_MYSQL_USER", cf.get('test', 'TEST_MYSQL_USER'))
 TEST_MYSQL_PASSWORD = env.get("TEST_MYSQL_PASSWORD", cf.get('test', 'TEST_MYSQL_PASSWORD'))
 TEST_MYSQL_DB = env.get("TEST_MYSQL_DB", cf.get('test', 'TEST_MYSQL_DB'))
 
+# 主题数据库
+THEME_HOST = env.get("THEME_HOST", cf.get('theme', 'THEME_HOST'))
+THEME_PORT = int(env.get("THEME_PORT", cf.get('theme', 'THEME_PORT')))
+THEME_USER = env.get("THEME_USER", cf.get('theme', 'THEME_USER'))
+THEME_PASSWD = env.get("THEME_PASSWD", cf.get('theme', 'THEME_PASSWD'))
+THEME_DB = env.get("THEME_DB", cf.get('theme', 'THEME_DB'))
+
 # 聚源
 JUY_HOST = env.get("JUY_HOST", cf.get('juyuan', 'JUY_HOST'))
 JUY_PORT = int(env.get("JUY_PORT", cf.get('juyuan', 'JUY_PORT')))

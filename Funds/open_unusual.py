@@ -6,7 +6,6 @@
 5G板块开盘活跃，盘口涨幅达1.5%，华星创业一字涨停，麦捷科技大涨9%，有方科技涨8%。
 
 
-
 流程：
 第一步: 拿到所有异动
 第二步，查所有板块的实时涨幅，筛选出大于 1.5 的
@@ -43,7 +42,9 @@ class OpenUnusual(object):
 
     def get_all_block_stats(self):
         base_time = datetime.datetime.now()
-        target_time = base_time - datetime.timedelta(hours=8)
+        target_time = base_time - datetime.timedelta(days=0,
+                                                     # hours=8,
+                                                     )
         now_ts = int(time.mktime(target_time.timetuple()))
         res = TopicInvest.sync_get_topic_info(self.client, ts=now_ts)
 
@@ -51,7 +52,7 @@ class OpenUnusual(object):
         block_stats_map = defaultdict(list)
         # block_codes = []
         for block in res.msg_array:
-            # print(block)
+            print(block)
             block_code = block.block_code
             # block_codes.append(block_code)
 
@@ -112,13 +113,34 @@ class OpenUnusual(object):
         all_block_codes = list(all_block_stats_map.keys())
         block_rise_map = self.get_block_rise_map(all_block_codes)
         rise_block_codes = list(block_rise_map.keys())
-        for key, value in all_block_stats_map.items():
-            if key in rise_block_codes:
-                print(key, ">>>")
-                print(value)
+        print("# " * 20)
+        final_items = {}
+        for key, code_infos in all_block_stats_map.items():
+            # if key in rise_block_codes:
+            for code_info in code_infos:
+                if code_info.get("stats") in (3, 4):
+                    final_items[key] = code_infos
+                    break    # 退出内层循环
+
+        print(pprint.pformat(final_items))
+        if final_items:
+            self.get_content(final_items)
+
+    def get_content(self, items):
+        """
+        {'IX850039': [{'code': 'SZ300459', 'stats': 3},
+                      {'code': 'SH603003', 'stats': 1},
+                      {'code': 'SH600070', 'stats': 1}],
+
+        eg.
+        标题：5G板块开盘活跃,涨幅高达1.5%
+        内容：
+        5G板块开盘活跃，盘口涨幅达1.5%，华星创业一字涨停，麦捷科技大涨9%，有方科技涨8%。
+        """
+
+        pass
 
 
 if __name__ == "__main__":
     ou = OpenUnusual()
     ou.start()
-    pass
