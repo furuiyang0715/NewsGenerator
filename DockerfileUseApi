@@ -1,3 +1,4 @@
+# 废弃
 FROM registry.cn-shenzhen.aliyuncs.com/jzdev/tinibase:1.0.0
 
 ENV TZ=Asia/Shanghai

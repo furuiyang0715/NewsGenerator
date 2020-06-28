@@ -244,12 +244,12 @@ if __name__ == "__main__":
 '''
 
 '''进入到根目录下进行部署 
-docker build -f DockerfileUseApi -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 .
+docker build -f DockerfileUseApi2p -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 .
 docker push registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 
 sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2
 
 sudo docker run --log-opt max-size=10m --log-opt max-file=3 -itd \
---env LOCAL=0 \
+--env LOCAL=1 \
 --name generate_openunusual \
 registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 \
 python Funds/open_unusual.py
