@@ -83,7 +83,7 @@ class Stocks3DaysTop10(NewsBase):
         1： 三日连续净流入前10个股
         2：
         """
-        client = self._init_pool(self.product_cfg)
+        self._target_init()
         sql = '''
         CREATE TABLE IF NOT EXISTS `{}` (
           `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -98,8 +98,8 @@ class Stocks3DaysTop10(NewsBase):
            UNIQUE KEY `dt_type` (`Date`, `NewsType`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='资讯生成表';
         '''.format(self.target_table)
-        client.insert(sql)
-        client.dispose()
+        self.target_client.insert(sql)
+        self.target_client.end()
 
     def get_juyuan_codeinfo(self, secu_code):
         self._juyuan_init()
@@ -166,7 +166,6 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
         title = '这些个股被主力看好，主力资金3日净流入前十个股'
         print(content)
 
-        self._target_init()
         data = {
             # "Date": self.day,
             "Date": self.data_day,

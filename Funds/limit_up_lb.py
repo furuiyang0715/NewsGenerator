@@ -17,23 +17,6 @@ from PyAPI.JZpyapi.client import SyncSocketClient
 from base import logger, NewsBase
 from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
 
-'''eg.
-连板股今日竞价表现
-条件：连板数>=2的个股，今日竞价数据，竞价结束后发布(竞价结束的时间点是 )
-标题：连板股今日竞价表现
-内容：
-连板股今日竞价表现如下：
-4连板个股江南高纤（600527）集合竞价涨停封板，封板金额为2.45亿，成交金额为2.45亿；
-3连板山河药辅（300452）低开4.47%，成交金额为2.45亿；
-2连板皇氏集团（002329）平开0.00%，成交金额为2.45亿；
-2连板以岭药业（002603）高开6.77%，成交金额为2.45亿；
-2连板海伦哲（300201）高开6.98%，成交金额为2.45亿；
-2连板宝色股份（300402）高开0.75%，成交金额为2.45亿；
-2连板延江股份（300658）高开0.63%，成交金额为2.45亿；
-2连板龙宇燃油（603003）高开2.65%，成交金额为2.45亿；
-2连板泉峰汽车（603982）竞价跌停。
-'''
-
 
 class LimitUpLb(NewsBase):
     """连板股今日竞价表现"""
@@ -49,32 +32,58 @@ class LimitUpLb(NewsBase):
             max_retry=-1,
             # heartbeat=3,
         )
-        self.target_table = 'news_generate_limituplb'
-        self.fields = ['PubDate', 'Title', 'Content']
+        # self.target_table = 'news_generate_limituplb'
+        self.target_table = 'news_generate'
+        self.fields = ['Date', 'Title', 'Content', 'NewsType', 'NewsJson']
         self.today_str = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min).strftime("%Y-%m-%d")
 
+    # def _create_table(self):
+    #     self._target_init()
+    #     sql = '''
+    #     CREATE TABLE IF NOT EXISTS `{}` (
+    #       `id` int(11) NOT NULL AUTO_INCREMENT,
+    #       `PubDate` datetime NOT NULL COMMENT '资讯发布时间',
+    #       `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题',
+    #       `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
+    #       `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
+    #       `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    #        PRIMARY KEY (`id`),
+    #        UNIQUE KEY `un2` (`PubDate`)
+    #     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='连板股今日竞价表现';
+    #     '''.format(self.target_table)
+    #     self.target_client.insert(sql)
+    #     self.target_client.end()
+
     def _create_table(self):
+        """
+        新闻类型：
+        1： 三日连续净流入前10个股
+        2： 连板股今日竞价表现
+        """
         self._target_init()
         sql = '''
         CREATE TABLE IF NOT EXISTS `{}` (
           `id` int(11) NOT NULL AUTO_INCREMENT,
-          `PubDate` datetime NOT NULL COMMENT '资讯发布时间', 
+          `NewsType` int NOT NULL COMMENT '新闻类型',
+          `Date` datetime NOT NULL COMMENT '日期', 
+          `NewsJson` json  DEFAULT  NULL COMMENT 'json 格式的新闻数据体', 
           `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题', 
-          `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
+          `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',           
           `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
           `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
            PRIMARY KEY (`id`),
-           UNIQUE KEY `un2` (`PubDate`) 
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='连板股今日竞价表现';
+           UNIQUE KEY `dt_type` (`Date`, `NewsType`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='资讯生成表';
         '''.format(self.target_table)
         self.target_client.insert(sql)
         self.target_client.end()
 
     def start(self):
+        # 建表
         self._create_table()
-        # 交易日的判断以及
+
+        # 判断是否交易日
         is_trading = self.is_trading_day(self.today_str)
-        # is_trading = self.is_trading_day("2020-06-25")
         if not is_trading:
             logger.warning("非A股交易日")
             return
@@ -177,10 +186,11 @@ class LimitUpLb(NewsBase):
         final['Content'] = content
         # today_str = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min).strftime("%Y-%m-%d")
         # 竞价结束的时间定在每天的 9:25 程序在每天的 9:25 运行
-        final['PubDate'] = "{} {}".format(self.today_str, items[0].get("update_time"))
-        # print(pprint.pformat(final))
-        self.ding("连板股今日竞价表现: \n{}".format(pprint.pformat(final)))
+        final['Date'] = "{} {}".format(self.today_str, items[0].get("update_time"))
+        final['NewsType'] = 2
+        print(pprint.pformat(final))
         self._save(self.target_client, final, self.target_table, self.fields)
+        self.ding("连板股今日竞价表现: \n{}".format(pprint.pformat(final)))
 
 
 def task():
@@ -195,6 +205,23 @@ if __name__ == "__main__":
         # print("当前调度系统中的任务列表 {}".format(schedule.jobs))
         schedule.run_pending()
         time.sleep(10)
+
+'''
+连板股今日竞价表现
+条件：连板数>=2的个股，今日竞价数据，竞价结束后发布(竞价结束的时间点是 9：25)
+标题：连板股今日竞价表现
+内容：
+连板股今日竞价表现如下：
+4连板个股江南高纤（600527）集合竞价涨停封板，封板金额为2.45亿，成交金额为2.45亿；
+3连板山河药辅（300452）低开4.47%，成交金额为2.45亿；
+2连板皇氏集团（002329）平开0.00%，成交金额为2.45亿；
+2连板以岭药业（002603）高开6.77%，成交金额为2.45亿；
+2连板海伦哲（300201）高开6.98%，成交金额为2.45亿；
+2连板宝色股份（300402）高开0.75%，成交金额为2.45亿；
+2连板延江股份（300658）高开0.63%，成交金额为2.45亿；
+2连板龙宇燃油（603003）高开2.65%，成交金额为2.45亿；
+2连板泉峰汽车（603982）竞价跌停。
+'''
 
 
 '''进入根目录下进行部署 
