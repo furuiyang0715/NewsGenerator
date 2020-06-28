@@ -157,6 +157,7 @@ class NorthFund(NewsBase):
                 if item in self.invalid_items:
                     continue
                 # 这里是按照产品的要求去添加的一个功能: 每生成一条新的数据突破绝对值更大的阈值 就将之前 5 min 内突破的较小阈值的一条数据删除
+                # TODO 存在一个问题 就是会去堆积 self.invalid_items
                 _threshold = item.get("Threshold")
                 _dt = item.get("DateTime")
                 before_dt = _dt - datetime.timedelta(minutes=5)
@@ -208,6 +209,8 @@ class NorthFund(NewsBase):
 
 
 if __name__ == "__main__":
+    # NorthFund().history()
+
     # 应该放在循环外生成 否则每次都会去重置 invalid_items
     north = NorthFund()
     while True:

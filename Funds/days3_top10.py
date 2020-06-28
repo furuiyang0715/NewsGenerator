@@ -184,7 +184,7 @@ def task():
 
 
 if __name__ == "__main__":
-    task()
+    # task()
     schedule.every().day.at("15:05").do(task)
 
     while True:
@@ -215,6 +215,7 @@ if __name__ == "__main__":
 docker build -f DockerfileUseApi2p -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 . 
 docker push registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 
 sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2
+
 sudo docker run --log-opt max-size=10m --log-opt max-file=3 -itd \
 --env LOCAL=0 \
 --name generate_days3top10 \
