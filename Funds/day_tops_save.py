@@ -1,4 +1,3 @@
-# 保存每日的主力十大净买股
 import datetime
 import json
 import os
@@ -14,13 +13,13 @@ sys.path.insert(0, file_path)
 from PyAPI.JZpyapi import const
 from PyAPI.JZpyapi.apis.report import Rank
 from PyAPI.JZpyapi.client import SyncSocketClient
-from base import NewsBase
+from base import NewsBase, logger
 from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
 
 
 class DayTopsSaver(NewsBase):
     """保存每日全部的流入排行数据【主力净买个股排行】
-    TODO  这部分的数据存档似乎是给龙虎榜用的
+    该数据是保存在爬虫库还是正式的 dc 库看情况去修改对应的配置
     """
     def __init__(self):
         super(DayTopsSaver, self).__init__()
@@ -32,17 +31,18 @@ class DayTopsSaver(NewsBase):
             login_on_connected=True,
             auth_type=const.AUTH_TYPE_CLIENT,
             max_retry=-1,
-            # heartbeat=3,
         )
+        # 请求发起的时间
         self.day = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)
+        # 最近有数据的时间
+        self.data_day = None
+        # dc 中的行情数据表
         self.idx_table = 'stk_quot_idx'
-        self.dc_client = None
-        self.target_client = None
-        self.juyuan_client = None
+        # 保存每日全部的流入排行数据的表名
         self.target_table = 'rankdaytop'
 
     def _create_table(self):
-        client = self._init_pool(self.product_cfg)
+        self._target_init()
         sql = '''
         CREATE TABLE IF NOT EXISTS `{}` (
           `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -54,44 +54,17 @@ class DayTopsSaver(NewsBase):
            UNIQUE KEY `dt_thre` (`Date`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='每日净流入排行';
         '''.format(self.target_table)
-        client.insert(sql)
-        client.dispose()
-
-    def _dc_init(self):
-        self.dc_client = self._init_pool(self.dc_cfg)
-
-    def _target_init(self):
-        self.target_client = self._init_pool(self.product_cfg)
-
-    def _juyuan_init(self):
-        self.juyuan_client = self._init_pool(self.juyuan_cfg)
-
-    def __del__(self):
-        if self.dc_client:
-            self.dc_client.dispose()
-        if self.target_client:
-            self.target_client.dispose()
-        if self.juyuan_client:
-            self.juyuan_client.dispose()
-
-    def get_juyuan_codeinfo(self, secu_code):
-        self._juyuan_init()
-        sql = 'SELECT SecuCode,InnerCode, SecuAbbr from SecuMain WHERE SecuCategory in (1, 2, 8) \
-and SecuMarket in (83, 90) \
-and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
-        ret = self.juyuan_client.select_one(sql)
-        return ret.get('InnerCode'), ret.get("SecuAbbr")
-
-    def get_changepercactual(self, inner_code):
-        self._dc_init()
-        sql = '''select Date, ChangePercActual from {} where InnerCode = '{}' and Date <= '{}' order by Date desc limit 1; 
-        '''.format(self.idx_table, inner_code, self.day)  # 因为假如今天被机构首次评级立即发布,未收盘前拿到的是昨天的行情数据, 收盘手拿到的是今天的
-        ret = self.dc_client.select_one(sql)
-        changepercactual = self.re_decimal_data(ret.get("ChangePercActual"))
-        print("&&&&&& ", ret.get("Date"))
-        return changepercactual
+        self.target_client.insert(sql)
+        self.target_client.end()
 
     def start(self):
+        # 判断是否是交易日
+        is_trading = self.is_trading_day(self.day)
+        if not is_trading:
+            logger.warning("非交易日")
+            return
+
+        # 建表
         self._create_table()
 
         _count = 4000
@@ -110,34 +83,20 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
         rank_map = {}
         rank_num = 1
         for one in rank.row:
-            # print("code:", one.stock_code)
             for i in one.data:
                 if i.type == 1:
                     item = {}
                     secu_code = one.stock_code[2:]
-                    # inner_code, secu_abbr = self.get_juyuan_codeinfo(secu_code)
-                    # _changepercactual = self.get_changepercactual(inner_code)
                     item['value'] = struct.unpack("<f", i.value)[0]
                     item['secu_code'] = secu_code
-                    # item['inner_code'] = inner_code
-                    # item['secu_abbr'] = secu_abbr
-                    # item['changepercactual'] = _changepercactual
                     rank_map[rank_num] = item
                     rank_num += 1
                 elif i.type == 3:
                     print(bytes.fromhex(i.value.hex()).decode("utf-8"))
 
-        # for k, v in rank_map.items():
-            # print(k, ">>>", v)
-
-        self._target_init()
-        data = {"Date": self.day, "DayRank": json.dumps(rank_map, ensure_ascii=False)}
+        data = {"Date": self.data_day, "DayRank": json.dumps(rank_map, ensure_ascii=False)}
         self._save(self.target_client, data, self.target_table, ["Date", "DayRank"])
         self.ding('每日主力净买个股排行 json 数据已插入,数量{}'.format(len(list(rank_map.keys()))))
-
-
-# if __name__ == "__main__":
-#     DayTop10Saver().start()
 
 
 def task():
@@ -146,10 +105,9 @@ def task():
 
 if __name__ == "__main__":
     task()
-    schedule.every().day.at("03:05").do(task)
+    schedule.every().day.at("15:05").do(task)
 
     while True:
-        # print("当前调度系统中的任务列表 {}".format(schedule.jobs))
         schedule.run_pending()
         time.sleep(30)
 

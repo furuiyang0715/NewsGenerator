@@ -2,15 +2,12 @@ import datetime
 import os
 import sys
 import time
-
 import schedule
-from apscheduler.schedulers.blocking import BlockingScheduler
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
 file_path = os.path.abspath(os.path.join(cur_path, ".."))
 sys.path.insert(0, file_path)
 
-from base import logger
 from Finance.scanner import Scanner
 
 
@@ -42,12 +39,6 @@ def history_task():
     print(error_list)
 
 
-# if __name__ == "__main__":
-#     task()
-#
-#     # history_task()
-
-
 if __name__ == "__main__":
     task()
     schedule.every(10).minutes.do(task)
@@ -55,20 +46,6 @@ if __name__ == "__main__":
     while True:
         schedule.run_pending()
         time.sleep(10)
-
-
-# if __name__ == "__main__":
-#     scheduler = BlockingScheduler()
-#     task()
-#     scheduler.add_job(task, 'interval', minutes=10, max_instances=10, id="diff_task")
-#     logger.info('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
-#     try:
-#         scheduler.start()
-#     except (KeyboardInterrupt, SystemExit):
-#         pass
-#     except Exception as e:
-#         logger.info(f"本次任务执行出错{e}")
-#         sys.exit(0)
 
 
 '''部署 进入根目录下执行

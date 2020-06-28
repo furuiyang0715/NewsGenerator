@@ -357,6 +357,16 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
         is_trading = True if ret == 1 else False
         return is_trading
 
+    # def get_changepercactual(self, inner_code):
+    #     """获取行情数据"""
+    #     self._dc_init()
+    #     sql = '''select Date, ChangePercActual from {} where InnerCode = '{}' and Date <= '{}' order by Date desc limit 1;
+    #     '''.format(self.idx_table, inner_code, self.day)  # 因为假如今天被机构首次评级立即发布,未收盘前拿到的是昨天的行情数据, 收盘手拿到的是今天的
+    #     ret = self.dc_client.select_one(sql)
+    #     changepercactual = self.re_decimal_data(ret.get("ChangePercActual"))
+    #     self.data_day = ret.get("Date")
+    #     return changepercactual
+
 
 '''构建安装了全部依赖的基本镜像环境
 docker build -f DockerfileUseApi2 -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgeneratorbase:v1 . 
