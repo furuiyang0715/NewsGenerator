@@ -43,7 +43,8 @@ class OpenUnusual(NewsBase):
         #     6: "快速跳水",
         #     7: "快速跳水",
         # }
-        self.target_table = 'news_generate_openunusual'
+        # self.target_table = 'news_generate_openunusual'
+        self.target_table = 'news_generate'
 
     def get_all_block_stats(self):
         # 更改测试时间点
@@ -137,6 +138,7 @@ class OpenUnusual(NewsBase):
         final['Title'] = title
         final['Content'] = rows_str
         final['Date'] = self.day
+        final['NewsType'] = 4
         return final
 
     def get_code_rise_info(self, code, stats, lead=1):
@@ -169,24 +171,56 @@ class OpenUnusual(NewsBase):
                 else:
                     return "{}跟涨{}%, ".format(secu_abbr, self.re_decimal_data(value))
 
+    # def _create_table(self):
+    #     self._target_init()
+    #     sql = '''
+    #     CREATE TABLE IF NOT EXISTS `{}` (
+    #       `id` int(11) NOT NULL AUTO_INCREMENT,
+    #       `Date` datetime NOT NULL COMMENT '资讯发布时间',
+    #       `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题',
+    #       `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
+    #       `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
+    #       `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    #        PRIMARY KEY (`id`),
+    #        UNIQUE KEY `un2` (`Date`)
+    #     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='开盘异动盘口';
+    #     '''.format(self.target_table)
+    #     self.target_client.insert(sql)
+    #     self.target_client.end()
+
     def _create_table(self):
+        """
+        新闻类型：
+        1:  三日连续净流入前10个股
+        2:  连板股今日竞价表现
+        3:  早盘主力十大净买个股
+        4:  开盘异动盘口
+        """
         self._target_init()
         sql = '''
         CREATE TABLE IF NOT EXISTS `{}` (
           `id` int(11) NOT NULL AUTO_INCREMENT,
-          `Date` datetime NOT NULL COMMENT '资讯发布时间', 
+          `NewsType` int NOT NULL COMMENT '新闻类型',
+          `Date` datetime NOT NULL COMMENT '日期', 
+          `NewsJson` json  DEFAULT  NULL COMMENT 'json 格式的新闻数据体', 
           `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题', 
-          `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
+          `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',           
           `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
           `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
            PRIMARY KEY (`id`),
-           UNIQUE KEY `un2` (`Date`) 
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='开盘异动盘口';
+           UNIQUE KEY `dt_type` (`Date`, `NewsType`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='资讯生成表';
         '''.format(self.target_table)
         self.target_client.insert(sql)
         self.target_client.end()
 
     def start(self):
+        # 判断是否交易日
+        is_trading = self.is_trading_day(self.day)
+        if not is_trading:
+            logger.warning('非交易日')
+            return
+
         # 建表
         self._create_table()
 
@@ -208,8 +242,7 @@ class OpenUnusual(NewsBase):
         final = self.get_content(all_block_stats_map, block_rise_map)
         print(pprint.pformat(final))
 
-        self._target_init()
-        ret = self._save(self.target_client, final, self.target_table, ['Title', 'Date', 'Content'])
+        ret = self._save(self.target_client, final, self.target_table, ['Title', 'Date', 'Content', 'NewsType', 'NewsJson'])
         if ret:
             self.ding("开盘异动资讯生成:\n{}".format(pprint.pformat(final)))
 
@@ -224,7 +257,6 @@ if __name__ == "__main__":
     schedule.every().day.at("09:36").do(task)
 
     while True:
-        # print("当前调度系统中的任务列表 {}".format(schedule.jobs))
         schedule.run_pending()
         time.sleep(10)
 
