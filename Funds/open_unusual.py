@@ -10,27 +10,28 @@ cur_path = os.path.split(os.path.realpath(__file__))[0]
 file_path = os.path.abspath(os.path.join(cur_path, ".."))
 sys.path.insert(0, file_path)
 
-
+from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
 from PyAPI.JZpyapi import const
 from PyAPI.JZpyapi.apis.report import TopicInvest, Rank
 from PyAPI.JZpyapi.client import SyncSocketClient
-from base import NewsBase
+from base import NewsBase, logger
 
 
 class OpenUnusual(NewsBase):
     def __init__(self):
         super(OpenUnusual, self).__init__()
         self.client = SyncSocketClient(
-            # "192.168.0.241",
-            "47.107.21.122",
+            API_HOST,
             6700,
-            auth_username="黄耿铿",
-            auth_password="vhtyhr7c",
+            auth_username=AUTH_USERNAME,
+            auth_password=AUTH_PASSWORD,
             login_on_connected=True,
             auth_type=const.AUTH_TYPE_CLIENT,
             max_retry=-1,
             # heartbeat=3,
         )
+        self.base_time = datetime.datetime.now()
+        self.day = datetime.datetime.combine(self.base_time, datetime.time.min)
         # self.stock_monitor_status_map = {
         #     1: "直线拉升",
         #     2: "直线拉升",
@@ -40,23 +41,14 @@ class OpenUnusual(NewsBase):
         #     6: "快速跳水",
         #     7: "快速跳水",
         # }
-
-        # self.stock_monitor_status_map = {
-        #     1: "竞价大涨",
-        #     2: "竞价大涨",
-        #     3: "竞价涨停",
-        #     4: "竞价涨停",
-        #     5: "竞价大涨",
-        #     6: "竞价大涨",
-        #     7: "竞价大涨",
-        # }
+        self.target_table = 'news_generate_openunusual'
 
     def get_all_block_stats(self):
-        base_time = datetime.datetime.now()
-        target_time = base_time - datetime.timedelta(days=0,
-                                                     # hours=8,
-                                                     )
-        target_time = datetime.datetime(2020, 6, 24, 9, 36, 0)
+        # 更改测试时间点
+        self.base_time = datetime.datetime(2020, 6, 24)
+
+        _year, _month, _day = self.base_time.year, self.base_time.month, self.base_time.day
+        target_time = datetime.datetime(_year, _month, _day, 9, 36, 0)
         now_ts = int(time.mktime(target_time.timetuple()))
         res = TopicInvest.sync_get_topic_info(self.client, ts=now_ts)
 
@@ -126,7 +118,7 @@ class OpenUnusual(NewsBase):
                         break
                     code = one.get("code")
                     stats = one.get("stats")
-                    if count == 1:
+                    if count == 1:    # 首次循环出的是领涨股 之后的是跟涨股
                         content = self.get_code_rise_info(code, stats, lead=1)
                     else:
                         content = self.get_code_rise_info(code, stats, lead=0)
@@ -139,12 +131,17 @@ class OpenUnusual(NewsBase):
 
         title_format = "今日竞价表现：" + ("{}、"*len(block_names))[:-1] + "板块活跃"
         title = title_format.format(*block_names)
-        print(title)
-        print(rows_str)
+        final = dict()
+        final['Title'] = title
+        final['Content'] = rows_str
+        final['Date'] = self.day
+        return final
 
     def get_code_rise_info(self, code, stats, lead=1):
         """
-        查询股票的实时涨跌幅
+        TODO
+        查询股票的实时涨跌幅, 该接口在非交易日也存在数据.
+        lead 表示是否领涨股.
         """
         rank = Rank.sync_get_rank_by_rise_scope(
             self.client, stock_code_array=[code]
@@ -170,18 +167,49 @@ class OpenUnusual(NewsBase):
                 else:
                     return "{}跟涨{}%, ".format(secu_abbr, self.re_decimal_data(value))
 
+    def _create_table(self):
+        self._target_init()
+        sql = '''
+        CREATE TABLE IF NOT EXISTS `{}` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `Date` datetime NOT NULL COMMENT '资讯发布时间', 
+          `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题', 
+          `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
+          `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
+          `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+           PRIMARY KEY (`id`),
+           UNIQUE KEY `un2` (`Date`) 
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='开盘异动盘口';
+        '''.format(self.target_table)
+        self.target_client.insert(sql)
+        self.target_client.end()
+
     def start(self):
+        # 建表
+        self._create_table()
+
         all_block_stats_map = self.get_all_block_stats()
-        # print(pprint.pformat(all_block_stats_map))
+        print(pprint.pformat(all_block_stats_map))   # 非交易日无数据
+
+        if not all_block_stats_map:
+            logger.warning("未获取到交易日的 block 信息")
+            return
+
         all_block_codes = list(all_block_stats_map.keys())
-        # print(all_block_codes)
+        print(all_block_codes)
 
         block_rise_map = self.get_block_rise_map(all_block_codes)
-        # print(pprint.pformat(block_rise_map))
+        print(pprint.pformat(block_rise_map))     # 在非交易日是有数据的
         rise_block_codes = list(block_rise_map.keys())
-        # print(rise_block_codes)
+        print(rise_block_codes)
 
-        self.get_content(all_block_stats_map, block_rise_map)
+        final = self.get_content(all_block_stats_map, block_rise_map)
+        print(pprint.pformat(final))
+
+        self._target_init()
+        ret = self._save(self.target_client, final, self.target_table, ['Title', 'Date', 'Content'])
+        if ret:
+            self.ding("开盘异动资讯生成:\n{}".format(pprint.pformat(final)))
 
 
 if __name__ == "__main__":
