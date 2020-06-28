@@ -6,6 +6,8 @@ import sys
 import time
 from collections import defaultdict
 
+import schedule
+
 cur_path = os.path.split(os.path.realpath(__file__))[0]
 file_path = os.path.abspath(os.path.join(cur_path, ".."))
 sys.path.insert(0, file_path)
@@ -212,6 +214,43 @@ class OpenUnusual(NewsBase):
             self.ding("开盘异动资讯生成:\n{}".format(pprint.pformat(final)))
 
 
-if __name__ == "__main__":
+def task():
     ou = OpenUnusual()
     ou.start()
+
+
+if __name__ == "__main__":
+    # task()
+    schedule.every().day.at("09:36").do(task)
+
+    while True:
+        # print("当前调度系统中的任务列表 {}".format(schedule.jobs))
+        schedule.run_pending()
+        time.sleep(10)
+
+
+'''说明文档 
+开盘异动盘口
+条件：取主题猎手-盘口异动9：36分时，出现涨停个股且涨幅大于1.5%的异动盘口，再取两个涨幅最高的跟涨个股
+
+标题：
+今日竞价表现：5G、半导体、券商板块活跃
+
+内容：
+今日竞价表现：
+5G板块竞价涨幅达1.50%，华星创业竞价大涨9%，麦捷科技跟涨8%，有方科技跟涨7%。
+半导体板块竞价涨幅达1.85%，通富微电竞价大涨8%，麦捷科技跟涨4%，有方科技跟涨5%。
+券商板块竞价涨幅达2.57%，南京证券竞价涨停，国泰证券跟涨9%，中信证券跟涨8%。
+'''
+
+'''进入到根目录下进行部署 
+docker build -f DockerfileUseApi -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 .
+docker push registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 
+sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2
+
+sudo docker run --log-opt max-size=10m --log-opt max-file=3 -itd \
+--env LOCAL=0 \
+--name generate_openunusual \
+registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 \
+python Funds/open_unusual.py
+'''

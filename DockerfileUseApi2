@@ -1,0 +1,25 @@
+# 构建安装了全部依赖的基础环境
+
+ROM registry.cn-shenzhen.aliyuncs.com/jzdev/tinibase:1.0.0
+
+ENV TZ=Asia/Shanghai
+
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+RUN mkdir /PyAPI & mkdir /NewsGenerator
+
+ADD requirements.txt requirements.txt
+
+ADD ./PyAPI /PyAPI
+
+WORKDIR /PyAPI
+
+RUN python setup.py install
+
+WORKDIR /
+
+RUN rm -r PyAPI
+
+RUN pip install -r requirements.txt -i https://pypi.douban.com/simple
+
+WORKDIR /NewsGenerator

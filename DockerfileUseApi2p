@@ -1,0 +1,5 @@
+FROM registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgeneratorbase:v1
+
+ADD . /NewsGenerator
+
+WORKDIR /NewsGenerator

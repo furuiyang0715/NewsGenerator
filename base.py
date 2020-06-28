@@ -356,3 +356,12 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
         ret = self.juyuan_client.select_one(sql).get("IfTradingDay")
         is_trading = True if ret == 1 else False
         return is_trading
+
+
+'''构建安装了全部依赖的基本镜像环境
+docker build -f DockerfileUseApi2 -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgeneratorbase:v1 . 
+
+
+
+
+'''
