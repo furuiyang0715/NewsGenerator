@@ -19,7 +19,9 @@ from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
 
 
 class DayTopsSaver(NewsBase):
-    """保存每日全部的流入排行数据"""
+    """保存每日全部的流入排行数据【主力净买个股排行】
+    TODO  这部分的数据存档似乎是给龙虎榜用的
+    """
     def __init__(self):
         super(DayTopsSaver, self).__init__()
         self.client = SyncSocketClient(
@@ -45,7 +47,7 @@ class DayTopsSaver(NewsBase):
         CREATE TABLE IF NOT EXISTS `{}` (
           `id` int(11) NOT NULL AUTO_INCREMENT,
           `Date` datetime NOT NULL COMMENT '日期', 
-          `DayRank` json  NOT NULL COMMENT '三日连续净流入前10个股', 
+          `DayRank` json  NOT NULL COMMENT '每日主机净买排行 json', 
           `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
           `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
            PRIMARY KEY (`id`),
@@ -131,7 +133,7 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
         self._target_init()
         data = {"Date": self.day, "DayRank": json.dumps(rank_map, ensure_ascii=False)}
         self._save(self.target_client, data, self.target_table, ["Date", "DayRank"])
-        self.ding('每日流入排行数据已插入,数量{}'.format(len(list(rank_map.keys()))))
+        self.ding('每日主力净买个股排行 json 数据已插入,数量{}'.format(len(list(rank_map.keys()))))
 
 
 # if __name__ == "__main__":
@@ -153,7 +155,7 @@ if __name__ == "__main__":
 
 
 '''进入跟目录执行 保存每日流入排行数据
-docker build -f DockerfileUseApi -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 . 
+docker build -f DockerfileUseApi2p -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 . 
 docker push registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2  
 sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2
  

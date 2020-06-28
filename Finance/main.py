@@ -1,7 +1,9 @@
 import datetime
 import os
 import sys
+import time
 
+import schedule
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
@@ -47,35 +49,36 @@ def history_task():
 
 
 if __name__ == "__main__":
-    scheduler = BlockingScheduler()
     task()
-    scheduler.add_job(task, 'interval', minutes=10, max_instances=10, id="diff_task")
-    logger.info('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
-    try:
-        scheduler.start()
-    except (KeyboardInterrupt, SystemExit):
-        pass
-    except Exception as e:
-        logger.info(f"本次任务执行出错{e}")
-        sys.exit(0)
+    schedule.every(10).minutes.do(task)
+
+    while True:
+        schedule.run_pending()
+        time.sleep(10)
+
+
+# if __name__ == "__main__":
+#     scheduler = BlockingScheduler()
+#     task()
+#     scheduler.add_job(task, 'interval', minutes=10, max_instances=10, id="diff_task")
+#     logger.info('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
+#     try:
+#         scheduler.start()
+#     except (KeyboardInterrupt, SystemExit):
+#         pass
+#     except Exception as e:
+#         logger.info(f"本次任务执行出错{e}")
+#         sys.exit(0)
 
 
 '''部署 进入根目录下执行
-docker build -f Dockerfile -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1 .
-docker push registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1
-sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1
+docker build -f DockerfileUseApi2p -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 .
+docker push registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2
+sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2
 
-# remote
 sudo docker run --log-opt max-size=10m --log-opt max-file=3 -itd \
 --env LOCAL=0 \
 --name generate_finance \
-registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1 \
-python Finance/main.py
-
-# local
-sudo docker run --log-opt max-size=10m --log-opt max-file=3 -itd \
---env LOCAL=1 \
---name generate_finance \
-registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1 \
+registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 \
 python Finance/main.py
 '''
