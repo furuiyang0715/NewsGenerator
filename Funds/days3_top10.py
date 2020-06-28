@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import pprint
 import struct
 import sys
 import time
@@ -33,11 +34,13 @@ class Stocks3DaysTop10(NewsBase):
             # heartbeat=3,
         )
         self.day = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)
+        self.data_day = None  # 最近一次有数据的时间
         self.idx_table = 'stk_quot_idx'
         self.dc_client = None
         self.target_client = None
         self.juyuan_client = None
-        self.target_table = 'news_generate_stocks3daystop10'
+        # self.target_table = 'news_generate_stocks3daystop10'
+        self.target_table = 'news_generate'
 
     def _dc_init(self):
         self.dc_client = self._init_pool(self.dc_cfg)
@@ -56,20 +59,44 @@ class Stocks3DaysTop10(NewsBase):
         if self.juyuan_client:
             self.juyuan_client.dispose()
 
+    # def _create_table(self):
+    #     client = self._init_pool(self.product_cfg)
+    #     sql = '''
+    #     CREATE TABLE IF NOT EXISTS `{}` (
+    #       `id` int(11) NOT NULL AUTO_INCREMENT,
+    #       `Date` datetime NOT NULL COMMENT '日期',
+    #       `RankInfo` json  NOT NULL COMMENT '三日连续净流入前10个股',
+    #       `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题',
+    #       `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
+    #       `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
+    #       `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    #        PRIMARY KEY (`id`),
+    #        UNIQUE KEY `dt_thre` (`Date`)
+    #     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='三日连续净流入前10个股';
+    #     '''.format(self.target_table)
+    #     client.insert(sql)
+    #     client.dispose()
+
     def _create_table(self):
+        """
+        新闻类型：
+        1： 三日连续净流入前10个股
+        2：
+        """
         client = self._init_pool(self.product_cfg)
         sql = '''
         CREATE TABLE IF NOT EXISTS `{}` (
           `id` int(11) NOT NULL AUTO_INCREMENT,
+          `NewsType` int NOT NULL COMMENT '新闻类型',
           `Date` datetime NOT NULL COMMENT '日期', 
-          `RankInfo` json  NOT NULL COMMENT '三日连续净流入前10个股', 
+          `NewsJson` json  DEFAULT  NULL COMMENT 'json 格式的新闻数据体', 
           `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题', 
           `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',           
           `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
           `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
            PRIMARY KEY (`id`),
-           UNIQUE KEY `dt_thre` (`Date`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='三日连续净流入前10个股';
+           UNIQUE KEY `dt_type` (`Date`, `NewsType`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='资讯生成表';
         '''.format(self.target_table)
         client.insert(sql)
         client.dispose()
@@ -85,13 +112,18 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
     def get_changepercactual(self, inner_code):
         self._dc_init()
         sql = '''select Date, ChangePercActual from {} where InnerCode = '{}' and Date <= '{}' order by Date desc limit 1; 
-        '''.format(self.idx_table, inner_code, self.day)    # 因为假如今天被机构首次评级立即发布,未收盘前拿到的是昨天的行情数据, 收盘手拿到的是今天的
+        '''.format(self.idx_table, inner_code, self.day)    # 因为假如今天被机构首次评级立即发布,未收盘前拿到的是昨天的行情数据, 收盘后拿到的是今天的
         ret = self.dc_client.select_one(sql)
         changepercactual = self.re_decimal_data(ret.get("ChangePercActual"))
         print("&&&&&& ", ret.get("Date"))
+        self.data_day = ret.get("Date")
         return changepercactual
 
     def start(self):
+        is_trading = self.is_trading_day(self.day)
+        if not is_trading:
+            logger.warning("{} 非交易日".format(self.day))
+
         self._create_table()
 
         rank_map = {}
@@ -135,8 +167,16 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
         print(content)
 
         self._target_init()
-        data = {"Date": self.day, "RankInfo": rank_info, 'Content': content, "Title": title}
-        self._save(self.target_client, data, self.target_table, ['Date', "RankInfo"])
+        data = {
+            # "Date": self.day,
+            "Date": self.data_day,
+            "NewsType": 1,
+            "NewsJson": rank_info,
+            'Content': content,
+            "Title": title,
+        }
+        ret = self._save(self.target_client, data, self.target_table, ['Date', "NewsType", "NewsJson", 'Content', "Title"])
+        self.ding("主力资金3日净流入前十个股-资讯生成\n{}".format(pprint.pformat(data)))
 
 
 def task():
@@ -146,16 +186,34 @@ def task():
 
 if __name__ == "__main__":
     task()
-    schedule.every().day.at("03:05").do(task)
+    schedule.every().day.at("15:05").do(task)
 
     while True:
         # print("当前调度系统中的任务列表 {}".format(schedule.jobs))
         schedule.run_pending()
         time.sleep(30)
 
+'''
+3日净流入前十个股
+条件：三个交易日主力净买额前十的个股，每日收盘发布
+标题：这些个股被主力看好，主力资金3日净流入前十个股
+
+内容：
+三日主力净买额前十的个股：
+
+山河药辅（300452）+1.54%，三日主力净买额1200万
+皇氏集团（002329）+1.54%，三日主力净买额1200万
+以岭药业（002603）+1.54%，三日主力净买额1200万
+海伦哲（300201）  +1.54%，三日主力净买额1200万
+宝色股份（300402）+1.54%，三日主力净买额1200万
+延江股份（300658）+1.54%，三日主力净买额1200万
+龙宇燃油（603003）+1.54%，三日主力净买额1200万
+泉峰汽车（603982）+1.54%，三日主力净买额1200万
+'''
+
 
 '''进入根目录下进行部署 
-docker build -f DockerfileUseApi -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 .
+docker build -f DockerfileUseApi2p -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 . 
 docker push registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 
 sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2
 sudo docker run --log-opt max-size=10m --log-opt max-file=3 -itd \
