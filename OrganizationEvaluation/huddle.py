@@ -290,24 +290,25 @@ def history_task():
 
 
 if __name__ == "__main__":
-    history_task()
-    task()
-    # schedule.every().day.at("00:05").do(task)
-    # schedule.every().day.at("09:00").do(task)
-    #
-    # while True:
-    #     # print("当前调度系统中的任务列表 {}".format(schedule.jobs))
-    #     schedule.run_pending()
-    #     time.sleep(30)
+    # history_task()
+    # task()
+    schedule.every().day.at("00:05").do(task)
+    schedule.every().day.at("09:00").do(task)
+
+    while True:
+        print("当前调度系统中的任务列表 {}".format(schedule.jobs))
+        schedule.run_pending()
+        time.sleep(30)
 
 
 '''进入到根目录下进行部署: 机构类汇总 首次评级和多机构评级同时生成 
 docker build -f DockerfileUseApi2p -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 . 
 docker push registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2
 sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2
+
 sudo docker run --log-opt max-size=10m --log-opt max-file=3 -itd \
 --env LOCAL=0 \
---name ora \
+--name newsgenerator_ora \
 registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 \
 python OrganizationEvaluation/huddle.py
 '''
