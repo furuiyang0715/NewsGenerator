@@ -1,8 +1,15 @@
 import datetime
 import json
-import pprint
+import os
+import sys
+import time
 
 import requests
+import schedule
+
+cur_path = os.path.split(os.path.realpath(__file__))[0]
+file_path = os.path.abspath(os.path.join(cur_path, ".."))
+sys.path.insert(0, file_path)
 
 from base import NewsBase, logger
 
@@ -57,7 +64,7 @@ class OraApi(NewsBase):
         _close = self.re_decimal_data(ret.get("Close"))
         _date = ret.get("Date")    # 最近的一个已结束交易日的时间
         # TODO
-        # assert _date == self.day
+        assert _date == self.day
         return changepercactual, _close
 
     def get_resp_datas(self):
@@ -148,8 +155,33 @@ class OraApi(NewsBase):
         self.ding("龙虎榜-机构净买额最大: \n {}\n\n 龙虎榜-机构席位最多: \n{}".format(item1, item2))
 
 
+def task():
+    try:
+        OraApi().start()
+    except Exception as e:
+        OraApi().ding("龙虎榜资讯生成异常:{} 请检查".format(e))
+
+
 if __name__ == "__main__":
-    OraApi().start()
+    # TODO
+    # task()
+    schedule.every().day.at("15:06").do(task)
+
+    while True:
+        schedule.run_pending()
+        time.sleep(10)
+
+
+'''
+docker build -f DockerfileUseApi2p -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 .
+docker push registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 
+sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2
+
+sudo docker run --log-opt max-size=10m --log-opt max-file=3 -itd \
+--name generate_winlist \
+registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 \
+python WinnersList/winlist_api.py
+'''
 
 
 
