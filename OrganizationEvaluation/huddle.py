@@ -17,7 +17,8 @@ class OrganizationEvaluation(NewsBase):
         super(OrganizationEvaluation, self).__init__()
         self.source_table = 'rrp_rpt_secu_rat'
         self.idx_table = 'stk_quot_idx'
-        self.target_table = 'news_generate_organization'
+        # self.target_table = 'news_generate_organization'
+        self.target_table = 'news_generate'
         # 需求是在过 0 点的时候生成前一天的整合新闻
         self._today = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min) if not _today else _today
         self.day = self._today - datetime.timedelta(days=1)
@@ -26,6 +27,7 @@ class OrganizationEvaluation(NewsBase):
         self.target_client = None
         self.title_format = '{}月{}日{}只个股获机构首次评级: '
         self.content_format = '{}（{}）获得{}首次评级 - {}，最新收盘价{}，涨幅{}%。'
+        self.fields = ['Date', 'NewsType', 'Title', 'Content', 'NewsJson']
 
     def __del__(self):
         if self.bg_client:
@@ -77,23 +79,51 @@ and rat_code in (10, 20) group by trd_code having count(*) >=5;'''.format(self.s
         else:
             return False
 
+    # def _create_table(self):
+    #     sql = '''
+    #     CREATE TABLE IF NOT EXISTS `{}` (
+    #       `id` int(11) NOT NULL AUTO_INCREMENT,
+    #       `PubDate` datetime NOT NULL COMMENT '资讯发布时间',
+    #       `PubType` int NOT NULL COMMENT '资讯类型1:首次评级2:获多机构买入增持评级',
+    #       `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题',
+    #       `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
+    #       `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
+    #       `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    #        PRIMARY KEY (`id`),
+    #        UNIQUE KEY `un2` (`PubDate`, `PubType`)
+    #     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='机构评级资讯生成';
+    #     '''.format(self.target_table)
+    #     self._target_init()
+    #     self.target_client.insert(sql)
+    #     logger.info("建表成功 ")
+
     def _create_table(self):
+        """
+        新闻类型：
+        1:  三日连续净流入前10个股
+        2:  连板股今日竞价表现
+        3:  早盘主力十大净买个股
+        4:  开盘异动盘口
+        5:  机构首次评级
+        6:  获多机构买入增持评级
+        """
+        self._target_init()
         sql = '''
         CREATE TABLE IF NOT EXISTS `{}` (
           `id` int(11) NOT NULL AUTO_INCREMENT,
-          `PubDate` datetime NOT NULL COMMENT '资讯发布时间', 
-          `PubType` int NOT NULL COMMENT '资讯类型1:首次评级2:获多机构买入增持评级',
+          `NewsType` int NOT NULL COMMENT '新闻类型',
+          `Date` datetime NOT NULL COMMENT '日期', 
+          `NewsJson` json  DEFAULT  NULL COMMENT 'json 格式的新闻数据体', 
           `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题', 
-          `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
+          `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',           
           `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
           `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
            PRIMARY KEY (`id`),
-           UNIQUE KEY `un2` (`PubDate`, `PubType`) 
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='机构评级资讯生成';
+           UNIQUE KEY `dt_type` (`Date`, `NewsType`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='资讯生成表';
         '''.format(self.target_table)
-        self._target_init()
         self.target_client.insert(sql)
-        logger.info("建表成功 ")
+        self.target_client.end()
 
     def process_items(self, datas):
         secu_codes = self.a_secucategory_codes
@@ -147,11 +177,11 @@ and rat_code in (10, 20) group by trd_code having count(*) >=5;'''.format(self.s
             content += (item.get("Content") + "\n")
 
         ret = dict()
-        ret["PubDate"] = self._today
-        ret['PubType'] = 1
+        ret["Date"] = self._today
+        ret['NewsType'] = 5
         ret['Title'] = title
         ret["Content"] = content
-        self._save(self.target_client, ret, self.target_table, ["PubDate", 'PubType', 'Title', "Content"])
+        self._save(self.target_client, ret, self.target_table, self.fields)
 
     def pub_first_news(self):
         """机构首次评审"""
@@ -207,6 +237,9 @@ and rat_code in (10, 20) group by trd_code having count(*) >=5;'''.format(self.s
             logger.info("{} 今日无满足要求的多机构评级数据".format(self.day))
             return
 
+        # TODO 对于 more_datas 按照 count 排序
+        more_datas = sorted(more_datas, key=lambda x: x["count"], reverse=True)
+
         content = ''
         for data in more_datas:
             count = data.get("count")
@@ -226,11 +259,11 @@ and rat_code in (10, 20) group by trd_code having count(*) >=5;'''.format(self.s
         # 修改标题: 6月1日23只个股获多家机构调高评级
         title = '{}月{}日{}只个股获多家机构调高评级'.format(self.day.month, self.day.day, len(more_datas))
         final = dict()
-        final["PubDate"] = self._today
-        final['PubType'] = 2
+        final["Date"] = self._today
+        final['NewsType'] = 6
         final['Title'] = title
         final['Content'] = content
-        self._save(self.target_client, final, self.target_table, ["PubDate", 'PubType', 'Title', 'Content'])
+        self._save(self.target_client, final, self.target_table, self.fields)
 
 
 def task():
@@ -243,8 +276,8 @@ def task():
 
 def history_task():
     """历史数据"""
-    _start = datetime.datetime(2020, 1, 13)
-    _end = datetime.datetime(2020, 6, 3)
+    _start = datetime.datetime(2020, 5, 1)
+    _end = datetime.datetime(2020, 6, 28)
     _dt = _start
     while _dt <= _end:
         print(_dt)
@@ -259,22 +292,22 @@ def history_task():
 if __name__ == "__main__":
     history_task()
     task()
-    schedule.every().day.at("00:05").do(task)
-    schedule.every().day.at("09:00").do(task)
-
-    while True:
-        # print("当前调度系统中的任务列表 {}".format(schedule.jobs))
-        schedule.run_pending()
-        time.sleep(30)
+    # schedule.every().day.at("00:05").do(task)
+    # schedule.every().day.at("09:00").do(task)
+    #
+    # while True:
+    #     # print("当前调度系统中的任务列表 {}".format(schedule.jobs))
+    #     schedule.run_pending()
+    #     time.sleep(30)
 
 
 '''进入到根目录下进行部署: 机构类汇总 首次评级和多机构评级同时生成 
-docker build -f Dockerfile -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1 . 
-docker push registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1
-sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1 
+docker build -f DockerfileUseApi2p -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 . 
+docker push registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2
+sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2
 sudo docker run --log-opt max-size=10m --log-opt max-file=3 -itd \
---env LOCAL=1 \
+--env LOCAL=0 \
 --name ora \
-registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v1 \
+registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 \
 python OrganizationEvaluation/huddle.py
 '''
