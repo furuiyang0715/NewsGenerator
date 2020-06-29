@@ -46,11 +46,39 @@ class OpenUnusual(NewsBase):
         # self.target_table = 'news_generate_openunusual'
         self.target_table = 'news_generate'
 
-    def get_all_block_stats(self):
-        # 更改测试时间点
-        self.base_time = datetime.datetime(2020, 6, 24)
+    def history(self):
+        """
+        历史数据的生成
+        """
+        start_day = datetime.datetime(2020, 1, 1)
+        end_day = datetime.datetime(2020, 6, 29)
+        _day = start_day
+        while _day <= end_day:
+            # 判断当天是否是交易日
+            is_trading = self.is_trading_day(_day)
+            if not is_trading:
+                logger.warning("{}非交易日".format(_day))
+            else:
+                all_block_stats_map = self.get_all_block_stats(_day)
+                if not all_block_stats_map:
+                    logger.warning("未获取到交易日 {} 的 block 信息".format(_day))
+                else:
+                    all_block_codes = list(all_block_stats_map.keys())
+                    block_rise_map = self.get_block_rise_map(all_block_codes)
+                    final = self.get_content(all_block_stats_map, block_rise_map)
+                    if not final:
+                        logger.warning("今日{}无数据生成".format(_day))
+                    else:
+                        ret = self._save(self.target_client, final, self.target_table,
+                                         ['Title', 'Date', 'Content', 'NewsType', 'NewsJson'])
 
-        _year, _month, _day = self.base_time.year, self.base_time.month, self.base_time.day
+            _day += datetime.timedelta(days=1)
+
+    def get_all_block_stats(self, req_day):
+        """
+        获取某个请求时间点的版块数据
+        """
+        _year, _month, _day = req_day.year, req_day.month, req_day.day
         target_time = datetime.datetime(_year, _month, _day, 9, 36, 0)
         now_ts = int(time.mktime(target_time.timetuple()))
         res = TopicInvest.sync_get_topic_info(self.client, ts=now_ts)
@@ -131,6 +159,10 @@ class OpenUnusual(NewsBase):
                 # ，后面有个空格
                 row = base_content[:-2] + "。\n"
                 rows_str += row
+
+        if not block_names:
+            logger.warning("今日无数据生成")
+            return
 
         title_format = "今日竞价表现：" + ("{}、"*len(block_names))[:-1] + "板块活跃"
         title = title_format.format(*block_names)
@@ -224,7 +256,7 @@ class OpenUnusual(NewsBase):
         # 建表
         self._create_table()
 
-        all_block_stats_map = self.get_all_block_stats()
+        all_block_stats_map = self.get_all_block_stats(self.day)
         print(pprint.pformat(all_block_stats_map))   # 非交易日无数据
 
         if not all_block_stats_map:
@@ -241,6 +273,9 @@ class OpenUnusual(NewsBase):
 
         final = self.get_content(all_block_stats_map, block_rise_map)
         print(pprint.pformat(final))
+
+        if not final:
+            return
 
         ret = self._save(self.target_client, final, self.target_table, ['Title', 'Date', 'Content', 'NewsType', 'NewsJson'])
         if ret:
@@ -281,7 +316,7 @@ docker push registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2
 sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2
 
 sudo docker run --log-opt max-size=10m --log-opt max-file=3 -itd \
---env LOCAL=1 \
+--env LOCAL=0 \
 --name generate_openunusual \
 registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 \
 python Funds/open_unusual.py
