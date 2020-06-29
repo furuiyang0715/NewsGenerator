@@ -48,12 +48,13 @@ class OpenUnusual(NewsBase):
 
     def history(self):
         """
-        历史数据的生成
+        历史数据的生成[废弃 因为涨跌幅只有实时的]
         """
         start_day = datetime.datetime(2020, 1, 1)
         end_day = datetime.datetime(2020, 6, 29)
         _day = start_day
         while _day <= end_day:
+            print(_day)
             # 判断当天是否是交易日
             is_trading = self.is_trading_day(_day)
             if not is_trading:
@@ -71,6 +72,10 @@ class OpenUnusual(NewsBase):
                     else:
                         ret = self._save(self.target_client, final, self.target_table,
                                          ['Title', 'Date', 'Content', 'NewsType', 'NewsJson'])
+                        if ret:
+                            logger.info("{}数据保存成功".format(_day))
+                            print()
+                            print()
 
             _day += datetime.timedelta(days=1)
 
@@ -283,12 +288,12 @@ class OpenUnusual(NewsBase):
 
 
 def task():
-    ou = OpenUnusual()
-    ou.start()
+    OpenUnusual().start()
 
 
 if __name__ == "__main__":
     # task()
+
     schedule.every().day.at("09:36").do(task)
 
     while True:
