@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import time
+import traceback
 
 import requests
 import schedule
@@ -21,6 +22,7 @@ class OraApi(NewsBase):
         self.url = 'http://bg.jingzhuan.cn?api=stock_rank_INS_Up&timeperiod=1'
         self.idx_table = 'stk_quot_idx'
         self.day = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)
+        # self.day = datetime.datetime(2020, 6, 30)
         self.target_table = 'news_generate'
         self.fields = ['Title', 'Date', 'Content', 'NewsType', 'NewsJson']
 
@@ -146,6 +148,8 @@ class OraApi(NewsBase):
         item1 = self.gene_content_maxnetbuy(data1)
 
         item2 = self.gene_content_maxinsup(data2)
+        print(item1)
+        print(item2)
 
         self._target_init()
         self._save(self.target_client, item1, self.target_table, self.fields)
@@ -158,14 +162,17 @@ class OraApi(NewsBase):
 def task():
     try:
         OraApi().start()
-    except Exception as e:
-        OraApi().ding("龙虎榜资讯生成异常:{} 请检查".format(e))
+    except Exception:
+        OraApi().ding("龙虎榜资讯生成异常:{} 请检查".format(traceback.format_exc()))
 
 
 if __name__ == "__main__":
     # TODO
     # task()
+
     schedule.every().day.at("15:06").do(task)
+
+    schedule.every().day.at("18:06").do(task)
 
     while True:
         schedule.run_pending()
