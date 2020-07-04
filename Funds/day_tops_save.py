@@ -119,7 +119,7 @@ sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2
  
 sudo docker run --log-opt max-size=10m --log-opt max-file=3 -itd \
 --env LOCAL=0 \
---name save_daytop \
+--name generate_save_daytop \
 registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 \
 python Funds/day_tops_save.py
 
