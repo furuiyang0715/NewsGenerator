@@ -1,6 +1,7 @@
 import datetime
 import functools
 import os
+import pprint
 import sys
 import time
 import traceback
@@ -106,13 +107,25 @@ def task_7_8():
 def task_info():
     bs = NewsBase()
     bs._dc_init()
+    _client = bs.dc_client
+
+    # bs._test_init()
+    # _client = bs.test_client
+
     today_str = (datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)).strftime("%Y-%m-%d")
     base_sql = '''select * from news_generate where NewsType = {} and Date >= '{}'; '''
+
+    imap = {}
     for news_type in range(1, 9):
         sql = base_sql.format(news_type, today_str)
-        print(sql)
-        ret = bs.dc_client.select_all(sql)
-        print(ret)
+        # print(sql)
+        ret = _client.select_one(sql)
+        title = ret.get("Title") if ret else ''
+        # print(title)
+        imap[news_type] = title
+
+    print(pprint.pformat(imap))
+    bs.ding(pprint.pformat(imap))
 
 
 def main():
