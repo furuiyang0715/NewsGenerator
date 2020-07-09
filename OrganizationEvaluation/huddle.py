@@ -154,7 +154,7 @@ and rat_code in (10, 20) group by trd_code having count(*) >=5;'''.format(self.s
             logger.warning("{} 无符合条件的首次发布数据".format(self.day))
             return
 
-        title = self.title_format.format(self.day.month, self.day.day, len(items))
+        title = self.title_format[:-2].format(self.day.month, self.day.day, len(items))
         content = ''
         for item in items:
             content += (item.get("Content") + "\n")
