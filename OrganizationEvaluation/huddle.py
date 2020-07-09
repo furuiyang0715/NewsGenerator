@@ -9,6 +9,7 @@ cur_path = os.path.split(os.path.realpath(__file__))[0]
 file_path = os.path.abspath(os.path.join(cur_path, ".."))
 sys.path.insert(0, file_path)
 from base import NewsBase, logger
+from configs import LOCAL
 
 
 class OrganizationEvaluation(NewsBase):
@@ -78,24 +79,6 @@ and rat_code in (10, 20) group by trd_code having count(*) >=5;'''.format(self.s
             return True
         else:
             return False
-
-    # def _create_table(self):
-    #     sql = '''
-    #     CREATE TABLE IF NOT EXISTS `{}` (
-    #       `id` int(11) NOT NULL AUTO_INCREMENT,
-    #       `PubDate` datetime NOT NULL COMMENT '资讯发布时间',
-    #       `PubType` int NOT NULL COMMENT '资讯类型1:首次评级2:获多机构买入增持评级',
-    #       `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题',
-    #       `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
-    #       `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
-    #       `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    #        PRIMARY KEY (`id`),
-    #        UNIQUE KEY `un2` (`PubDate`, `PubType`)
-    #     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='机构评级资讯生成';
-    #     '''.format(self.target_table)
-    #     self._target_init()
-    #     self.target_client.insert(sql)
-    #     logger.info("建表成功 ")
 
     def _create_table(self):
         """
@@ -185,7 +168,8 @@ and rat_code in (10, 20) group by trd_code having count(*) >=5;'''.format(self.s
 
     def pub_first_news(self):
         """机构首次评审"""
-        self._create_table()
+        if LOCAL:
+            self._create_table()
         datas = self.get_pub_first()
         logger.info("{} 的发布个数为 {}".format(self.day, len(datas)))
 
@@ -205,7 +189,8 @@ and rat_code in (10, 20) group by trd_code having count(*) >=5;'''.format(self.s
 
     def evaluate_more(self):
         secu_codes = self.a_secucategory_codes
-        self._create_table()
+        if LOCAL:
+            self._create_table()
         datas = self.get_evaluate_more()
 
         # more_datas 代表符合要求的数据
