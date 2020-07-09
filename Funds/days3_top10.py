@@ -12,7 +12,7 @@ file_path = os.path.abspath(os.path.join(cur_path, ".."))
 sys.path.insert(0, file_path)
 
 from base import NewsBase, logger
-from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
+from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD, LOCAL
 from PyAPI.JZpyapi import const
 from PyAPI.JZpyapi.apis.report import Rank
 from PyAPI.JZpyapi.client import SyncSocketClient
@@ -58,24 +58,6 @@ class Stocks3DaysTop10(NewsBase):
             self.target_client.dispose()
         if self.juyuan_client:
             self.juyuan_client.dispose()
-
-    # def _create_table(self):
-    #     client = self._init_pool(self.product_cfg)
-    #     sql = '''
-    #     CREATE TABLE IF NOT EXISTS `{}` (
-    #       `id` int(11) NOT NULL AUTO_INCREMENT,
-    #       `Date` datetime NOT NULL COMMENT '日期',
-    #       `RankInfo` json  NOT NULL COMMENT '三日连续净流入前10个股',
-    #       `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题',
-    #       `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
-    #       `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
-    #       `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    #        PRIMARY KEY (`id`),
-    #        UNIQUE KEY `dt_thre` (`Date`)
-    #     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='三日连续净流入前10个股';
-    #     '''.format(self.target_table)
-    #     client.insert(sql)
-    #     client.dispose()
 
     def _create_table(self):
         """
@@ -124,7 +106,8 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
         if not is_trading:
             logger.warning("{} 非交易日".format(self.day))
 
-        self._create_table()
+        if LOCAL:
+            self._create_table()
 
         rank_map = {}
         rank_num = 1
