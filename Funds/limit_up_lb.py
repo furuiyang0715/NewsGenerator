@@ -173,6 +173,7 @@ class LimitUpLb(NewsBase):
         final['Date'] = "{} {}".format(self.today_str, items[0].get("update_time"))
         final['NewsType'] = 2
         print(pprint.pformat(final))
+        self._target_init()
         self._save(self.target_client, final, self.target_table, self.fields)
         self.ding("连板股今日竞价表现: \n{}".format(pprint.pformat(final)))
 

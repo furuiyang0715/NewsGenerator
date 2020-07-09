@@ -20,7 +20,7 @@ from Funds.open_unusual import OpenUnusual
 from OrganizationEvaluation.huddle import OrganizationEvaluation
 from WinnersList.winlist_api import OraApi
 
-from base import logger
+from base import logger, NewsBase
 
 
 def catch_exceptions(cancel_on_failure=False):
@@ -103,6 +103,18 @@ def task_7_8():
     OraApi().start()
 
 
+def task_info():
+    bs = NewsBase()
+    bs._dc_init()
+    today_str = (datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)).strftime("%Y-%m-%d")
+    base_sql = '''select * from news_generate where NewsType = {} and Date >= '{}'; '''
+    for news_type in range(1, 9):
+        sql = base_sql.format(news_type, today_str)
+        print(sql)
+        ret = bs.dc_client.select_all(sql)
+        print(ret)
+
+
 def main():
     schedule.every().day.at("15:05").do(task_1)
 
@@ -138,4 +150,20 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+
+    task_info()
+
+
+'''
+docker build -f DockerfileUseApi2p -t registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 . 
+docker push registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 
+sudo docker pull registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2
+
+sudo docker run --log-opt max-size=10m --log-opt max-file=3 -itd \
+--env LOCAL=0 \
+--name gen_all \
+registry.cn-shenzhen.aliyuncs.com/jzdev/jzdata/newsgenerator:v2 \
+python GenSchedule/main.py
+
+'''

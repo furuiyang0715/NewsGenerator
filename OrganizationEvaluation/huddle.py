@@ -164,6 +164,7 @@ and rat_code in (10, 20) group by trd_code having count(*) >=5;'''.format(self.s
         ret['NewsType'] = 5
         ret['Title'] = title
         ret["Content"] = content
+        self._target_init()
         self._save(self.target_client, ret, self.target_table, self.fields)
 
     def pub_first_news(self):
@@ -248,6 +249,7 @@ and rat_code in (10, 20) group by trd_code having count(*) >=5;'''.format(self.s
         final['NewsType'] = 6
         final['Title'] = title
         final['Content'] = content
+        self._target_init()
         self._save(self.target_client, final, self.target_table, self.fields)
 
 

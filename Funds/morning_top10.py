@@ -148,6 +148,7 @@ class MorningTop10(NewsBase):
 
         to_insert = self.get_content(top10info)
 
+        self._target_init()
         ret = self._save(self.target_client, to_insert, self.target_table, self.fields)
 
         self.ding("早盘十大成交股资讯生成\n {}".format(pprint.pformat(to_insert)))

@@ -158,6 +158,7 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
             "Title": title,
         }
         print(data)
+        self._target_init()
         ret = self._save(self.target_client, data, self.target_table, ['Date', "NewsType", "NewsJson", 'Content', "Title"])
         self.ding("主力资金3日净流入前十个股-资讯生成\n{}".format(pprint.pformat(data)))
 

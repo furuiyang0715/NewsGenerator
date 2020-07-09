@@ -311,6 +311,7 @@ class OpenUnusual(NewsBase):
         if not final:
             return
 
+        self._target_init()
         ret = self._save(self.target_client, final, self.target_table, ['Title', 'Date', 'Content', 'NewsType', 'NewsJson'])
         if ret:
             self.ding("开盘异动资讯生成:\n{}".format(pprint.pformat(final)))
