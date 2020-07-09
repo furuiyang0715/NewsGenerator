@@ -7,6 +7,7 @@ from Funds.limit_up_lb import LimitUpLb
 from Funds.morning_top10 import MorningTop10
 from Funds.open_unusual import OpenUnusual
 from OrganizationEvaluation.huddle import OrganizationEvaluation
+from WinnersList.winlist_api import OraApi
 
 
 def task_1():
@@ -37,6 +38,12 @@ def task_5_6():
     runner.evaluate_more()
 
 
+def task_7_8():
+    # 7:  龙虎榜-机构净买额最大
+    # 8:  龙虎榜-机构席位最多
+    OraApi().start()
+
+
 def main():
     schedule.every().day.at("15:05").do(task_1)
 
@@ -48,6 +55,11 @@ def main():
 
     schedule.every().day.at("00:05").do(task_5_6)
     schedule.every().day.at("09:00").do(task_5_6)
+
+    # TODO 测试大概的更新时间
+    schedule.every().day.at("16:06").do(task_7_8)
+    schedule.every().day.at("17:06").do(task_7_8)
+    schedule.every().day.at("18:06").do(task_7_8)
 
     while True:
         print("当前调度系统中的任务列表 {}".format(schedule.jobs))
