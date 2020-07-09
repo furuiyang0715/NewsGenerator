@@ -1,7 +1,13 @@
 import datetime
+import os
+import sys
 import time
 
 import schedule
+
+cur_path = os.path.split(os.path.realpath(__file__))[0]
+file_path = os.path.abspath(os.path.join(cur_path, ".."))
+sys.path.insert(0, file_path)
 
 from Finance.scanner import Scanner
 from Funds.days3_top10 import Stocks3DaysTop10
@@ -81,8 +87,7 @@ def main():
     schedule.every().day.at("09:00").do(task_5_6)
 
     # TODO 测试大概的更新时间
-    schedule.every().day.at("16:06").do(task_7_8)
-    schedule.every().day.at("17:06").do(task_7_8)
+    schedule.every().day.at("15:30").do(task_7_8)
     schedule.every().day.at("18:06").do(task_7_8)
 
     schedule.every(10).minutes.do(task_finance)

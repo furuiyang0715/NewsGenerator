@@ -174,7 +174,7 @@ if __name__ == "__main__":
     # TODO
     # task()
 
-    schedule.every().day.at("15:06").do(task)
+    schedule.every().day.at("15:30").do(task)
 
     schedule.every().day.at("18:06").do(task)
 
