@@ -15,7 +15,7 @@ from PyAPI.JZpyapi import const
 from PyAPI.JZpyapi.apis.report import Rank
 from PyAPI.JZpyapi.client import SyncSocketClient
 from base import logger, NewsBase
-from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
+from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD, LOCAL
 
 
 class LimitUpLb(NewsBase):
@@ -36,23 +36,6 @@ class LimitUpLb(NewsBase):
         self.target_table = 'news_generate'
         self.fields = ['Date', 'Title', 'Content', 'NewsType', 'NewsJson']
         self.today_str = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min).strftime("%Y-%m-%d")
-
-    # def _create_table(self):
-    #     self._target_init()
-    #     sql = '''
-    #     CREATE TABLE IF NOT EXISTS `{}` (
-    #       `id` int(11) NOT NULL AUTO_INCREMENT,
-    #       `PubDate` datetime NOT NULL COMMENT '资讯发布时间',
-    #       `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题',
-    #       `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
-    #       `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
-    #       `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    #        PRIMARY KEY (`id`),
-    #        UNIQUE KEY `un2` (`PubDate`)
-    #     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='连板股今日竞价表现';
-    #     '''.format(self.target_table)
-    #     self.target_client.insert(sql)
-    #     self.target_client.end()
 
     def _create_table(self):
         """
@@ -80,7 +63,8 @@ class LimitUpLb(NewsBase):
 
     def start(self):
         # 建表
-        self._create_table()
+        if LOCAL:
+            self._create_table()
 
         # 判断是否交易日
         is_trading = self.is_trading_day(self.today_str)
