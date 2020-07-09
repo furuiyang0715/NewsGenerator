@@ -3,6 +3,7 @@ import decimal
 import pprint
 
 from base import NewsBase, logger
+from configs import LOCAL
 
 
 class GenFiance(NewsBase):
@@ -49,7 +50,8 @@ class GenFiance(NewsBase):
             'Title',  # 生成文章标题
             'Content',  # 生成文章正文
         ]
-        self._create_table()
+        if LOCAL:
+            self._create_table()
 
     def _create_table(self):
         client = self._init_pool(self.product_cfg)
