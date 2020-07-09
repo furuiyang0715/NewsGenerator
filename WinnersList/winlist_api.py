@@ -13,6 +13,7 @@ file_path = os.path.abspath(os.path.join(cur_path, ".."))
 sys.path.insert(0, file_path)
 
 from base import NewsBase, logger
+from configs import LOCAL
 
 
 class OraApi(NewsBase):
@@ -132,6 +133,9 @@ class OraApi(NewsBase):
         return item
 
     def start(self):
+        if LOCAL:
+            self._create_table()
+
         is_trading = self.is_trading_day(self.day)
         if not is_trading:
             logger.warning("非交易日")

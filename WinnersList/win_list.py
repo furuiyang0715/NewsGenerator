@@ -54,7 +54,7 @@ file_path = os.path.abspath(os.path.join(cur_path, ".."))
 sys.path.insert(0, file_path)
 
 from base import NewsBase, logger
-from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
+from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD, LOCAL
 
 
 class WinList(NewsBase):
@@ -178,7 +178,9 @@ and ListedSector in (1, 2, 6, 7) and SecuCode = "{}";'.format(secu_code)
         return final
 
     def start(self):
-        self._create_table()
+        if LOCAL:
+            self._create_table()
+
         ret1, ret2 = self.get_result()
         final1 = self.gene_netbuy_data(ret1)
         final2 = self.gene_orgcount_data(ret2)
