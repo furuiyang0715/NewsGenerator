@@ -1,7 +1,9 @@
 import datetime
+import functools
 import os
 import sys
 import time
+import traceback
 
 import schedule
 
@@ -18,7 +20,27 @@ from Funds.open_unusual import OpenUnusual
 from OrganizationEvaluation.huddle import OrganizationEvaluation
 from WinnersList.winlist_api import OraApi
 
+from base import logger
 
+
+def catch_exceptions(cancel_on_failure=False):
+    def catch_exceptions_decorator(job_func):
+        @functools.wraps(job_func)
+        def wrapper(*args, **kwargs):
+            try:
+                return job_func(*args, **kwargs)
+            except:
+                logger.warning(traceback.format_exc())
+                # 在此处发送钉钉消息
+                if cancel_on_failure:
+                    logger.warning("异常 任务结束: {}".format(schedule.CancelJob))
+                    schedule.cancel_job(job_func)
+                    return schedule.CancelJob
+        return wrapper
+    return catch_exceptions_decorator
+
+
+@catch_exceptions(cancel_on_failure=False)
 def task_finance():
     s = Scanner()
     _today = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)
@@ -26,6 +48,7 @@ def task_finance():
     s.scan(_today, _now)
 
 
+@catch_exceptions(cancel_on_failure=False)
 def task_flownorth():
     north = NorthFund()
     while True:
@@ -40,26 +63,31 @@ def task_flownorth():
             time.sleep(10)
 
 
+@catch_exceptions(cancel_on_failure=False)
 def task_1():
     # 1: 3日净流入前十个股
     Stocks3DaysTop10().start()
 
 
+@catch_exceptions(cancel_on_failure=False)
 def task_2():
     # 2: 连板股今日竞价表现
     LimitUpLb().start()
 
 
+@catch_exceptions(cancel_on_failure=False)
 def task_3():
     # 3: 早盘主力十大净买个股
     MorningTop10().start()
 
 
+@catch_exceptions(cancel_on_failure=False)
 def task_4():
     # 4:  开盘异动盘口
     OpenUnusual().start()
 
 
+@catch_exceptions(cancel_on_failure=False)
 def task_5_6():
     # 5: 机构首次评级
     # 6: 获多机构买入增持评级
@@ -68,6 +96,7 @@ def task_5_6():
     runner.evaluate_more()
 
 
+@catch_exceptions(cancel_on_failure=False)
 def task_7_8():
     # 7:  龙虎榜-机构净买额最大
     # 8:  龙虎榜-机构席位最多
@@ -91,11 +120,6 @@ def main():
     schedule.every().day.at("18:06").do(task_7_8)
 
     schedule.every(10).minutes.do(task_finance)
-
-    # while True:
-    #     print("当前调度系统中的任务列表 {}".format(schedule.jobs))
-    #     schedule.run_pending()
-    #     time.sleep(10)
 
     north = NorthFund()
     while True:
