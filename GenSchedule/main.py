@@ -6,6 +6,7 @@ from Funds.days3_top10 import Stocks3DaysTop10
 from Funds.limit_up_lb import LimitUpLb
 from Funds.morning_top10 import MorningTop10
 from Funds.open_unusual import OpenUnusual
+from OrganizationEvaluation.huddle import OrganizationEvaluation
 
 
 def task_1():
@@ -28,6 +29,14 @@ def task_4():
     OpenUnusual().start()
 
 
+def task_5_6():
+    # 5: 机构首次评级
+    # 6: 获多机构买入增持评级
+    runner = OrganizationEvaluation()
+    runner.pub_first_news()
+    runner.evaluate_more()
+
+
 def main():
     schedule.every().day.at("15:05").do(task_1)
 
@@ -36,6 +45,9 @@ def main():
     schedule.every().day.at("10:30").do(task_3)
 
     schedule.every().day.at("09:36").do(task_4)
+
+    schedule.every().day.at("00:05").do(task_5_6)
+    schedule.every().day.at("09:00").do(task_5_6)
 
     while True:
         print("当前调度系统中的任务列表 {}".format(schedule.jobs))
