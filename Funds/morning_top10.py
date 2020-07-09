@@ -15,7 +15,7 @@ from PyAPI.JZpyapi import const
 from PyAPI.JZpyapi.apis.report import Rank
 from PyAPI.JZpyapi.client import SyncSocketClient
 from base import NewsBase, logger
-from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
+from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD, LOCAL
 
 
 class MorningTop10(NewsBase):
@@ -37,23 +37,6 @@ class MorningTop10(NewsBase):
         # self.fields = ["Date", "Title", "Content"]
         self.target_table = 'news_generate'
         self.fields = ['Date', 'Title', 'Content', 'NewsType', 'NewsJson']
-
-    # def _create_table(self):
-    #     self._target_init()
-    #     sql = '''
-    #     CREATE TABLE IF NOT EXISTS `{}` (
-    #       `id` int(11) NOT NULL AUTO_INCREMENT,
-    #       `Date` datetime NOT NULL COMMENT '资讯发布时间',
-    #       `Title` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL COMMENT '生成文章标题',
-    #       `Content` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT '生成文章正文',
-    #       `CREATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP,
-    #       `UPDATETIMEJZ` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    #        PRIMARY KEY (`id`),
-    #        UNIQUE KEY `un2` (`Date`)
-    #     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='资讯-早盘主力十大净买个股';
-    #     '''.format(self.target_table)
-    #     self.target_client.insert(sql)
-    #     self.target_client.end()
 
     def _create_table(self):
         """
@@ -158,7 +141,8 @@ class MorningTop10(NewsBase):
             logger.warning("非交易日")
             return
 
-        self._create_table()
+        if LOCAL:
+            self._create_table()
 
         top10info = self.dynamic_get_rank10()
 
