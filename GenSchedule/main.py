@@ -105,6 +105,7 @@ def task_7_8():
 
 
 def task_info():
+    """钉钉 """
     bs = NewsBase()
     bs._dc_init()
     _client = bs.dc_client
@@ -123,6 +124,16 @@ def task_info():
         title = ret.get("Title") if ret else ''
         # print(title)
         imap[news_type] = title
+
+    sql = '''select * from news_generate_flownorth where DateTime >= '{}';  '''.format(today_str)
+    ret = _client.select_all(sql)
+    titles = [r.get("Title") for r in ret] if ret else []
+    imap['flow'] = titles
+
+    sql = '''select * from news_generate_finance where InfoPublDate >= '{}';'''.format(today_str)
+    ret = _client.select_all(sql)
+    titles = [r.get("Title") for r in ret] if ret else []
+    imap['finance'] = titles
 
     print(pprint.pformat(imap))
     bs.ding(pprint.pformat(imap))
@@ -144,6 +155,9 @@ def main():
     schedule.every().day.at("15:30").do(task_7_8)
     schedule.every().day.at("18:06").do(task_7_8)
 
+    schedule.every().day.at("12:00").do(task_info)
+    schedule.every().day.at("19:00").do(task_info)
+
     schedule.every(10).minutes.do(task_finance)
 
     north = NorthFund()
@@ -163,9 +177,8 @@ def main():
 
 
 if __name__ == "__main__":
-    # main()
-
     task_info()
+    main()
 
 
 '''
