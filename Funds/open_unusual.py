@@ -320,7 +320,7 @@ def task():
 
 
 if __name__ == "__main__":
-    task()
+    # task()
 
     schedule.every().day.at("09:36").do(task)
 
