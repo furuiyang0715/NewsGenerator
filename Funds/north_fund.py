@@ -7,6 +7,7 @@ cur_path = os.path.split(os.path.realpath(__file__))[0]
 file_path = os.path.abspath(os.path.join(cur_path, ".."))
 sys.path.insert(0, file_path)
 from base import NewsBase, logger
+from configs import LOCAL
 
 
 class NorthFund(NewsBase):
@@ -138,7 +139,9 @@ class NorthFund(NewsBase):
         return item
 
     def start(self, _now):
-        self._create_table()
+        if LOCAL:
+            self._create_table()
+
         _start = datetime.datetime(_now.year, _now.month, _now.day, 9, 30, 0)
         _end = datetime.datetime(_now.year, _now.month, _now.day, 15, 0, 0)
         client = self._init_pool(self.product_cfg)
