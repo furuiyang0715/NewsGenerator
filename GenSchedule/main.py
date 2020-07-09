@@ -1,13 +1,37 @@
+import datetime
 import time
 
 import schedule
 
+from Finance.scanner import Scanner
 from Funds.days3_top10 import Stocks3DaysTop10
 from Funds.limit_up_lb import LimitUpLb
 from Funds.morning_top10 import MorningTop10
+from Funds.north_fund import NorthFund
 from Funds.open_unusual import OpenUnusual
 from OrganizationEvaluation.huddle import OrganizationEvaluation
 from WinnersList.winlist_api import OraApi
+
+
+def task_finance():
+    s = Scanner()
+    _today = datetime.datetime.combine(datetime.datetime.today(), datetime.time.min)
+    _now = datetime.datetime.now()
+    s.scan(_today, _now)
+
+
+def task_flownorth():
+    north = NorthFund()
+    while True:
+        _now = datetime.datetime.now()
+        day_start = datetime.datetime(_now.year, _now.month, _now.day, 9, 25, 0)
+        day_end = datetime.datetime(_now.year, _now.month, _now.day, 15, 5, 0)
+        if _now <= day_start or _now >= day_end:
+            print("不在生成时间内 {}".format(_now))
+            time.sleep(30)
+        else:
+            north.start(_now)
+            time.sleep(10)
 
 
 def task_1():
@@ -61,10 +85,12 @@ def main():
     schedule.every().day.at("17:06").do(task_7_8)
     schedule.every().day.at("18:06").do(task_7_8)
 
+    schedule.every(10).minutes.do(task_finance)
+
     while True:
         print("当前调度系统中的任务列表 {}".format(schedule.jobs))
         schedule.run_pending()
-        time.sleep(30)
+        time.sleep(10)
 
 
 if __name__ == "__main__":
