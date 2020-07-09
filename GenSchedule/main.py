@@ -87,10 +87,25 @@ def main():
 
     schedule.every(10).minutes.do(task_finance)
 
+    # while True:
+    #     print("当前调度系统中的任务列表 {}".format(schedule.jobs))
+    #     schedule.run_pending()
+    #     time.sleep(10)
+
+    north = NorthFund()
     while True:
         print("当前调度系统中的任务列表 {}".format(schedule.jobs))
         schedule.run_pending()
-        time.sleep(10)
+
+        _now = datetime.datetime.now()
+        day_start = datetime.datetime(_now.year, _now.month, _now.day, 9, 25, 0)
+        day_end = datetime.datetime(_now.year, _now.month, _now.day, 15, 5, 0)
+        if _now <= day_start or _now >= day_end:
+            print("不在生成时间内 {}".format(_now))
+            time.sleep(30)
+        else:
+            north.start(_now)
+            time.sleep(10)
 
 
 if __name__ == "__main__":
