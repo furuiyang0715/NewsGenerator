@@ -12,7 +12,7 @@ cur_path = os.path.split(os.path.realpath(__file__))[0]
 file_path = os.path.abspath(os.path.join(cur_path, ".."))
 sys.path.insert(0, file_path)
 
-from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD
+from configs import API_HOST, AUTH_USERNAME, AUTH_PASSWORD, LOCAL
 from PyAPI.JZpyapi import const
 from PyAPI.JZpyapi.apis.report import TopicInvest, Rank
 from PyAPI.JZpyapi.client import SyncSocketClient
@@ -283,7 +283,8 @@ class OpenUnusual(NewsBase):
             return
 
         # 建表
-        self._create_table()
+        if LOCAL:
+            self._create_table()
 
         all_block_stats_map = self.get_all_block_stats(self.day)
         # print(pprint.pformat(all_block_stats_map))   # 非交易日无数据
