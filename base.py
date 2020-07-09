@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import logging
+import os
 import sys
 import time
 import traceback
@@ -10,12 +11,15 @@ import traceback
 import requests
 import urllib.parse
 
-sys.path.append("./../")
+cur_path = os.path.split(os.path.realpath(__file__))[0]
+file_path = os.path.abspath(os.path.join(cur_path, ".."))
+sys.path.insert(0, file_path)
 from configs import (SPIDER_MYSQL_HOST, SPIDER_MYSQL_PORT, SPIDER_MYSQL_USER, SPIDER_MYSQL_PASSWORD,
                      SPIDER_MYSQL_DB, PRODUCT_MYSQL_HOST, PRODUCT_MYSQL_PORT, PRODUCT_MYSQL_USER,
                      PRODUCT_MYSQL_PASSWORD, PRODUCT_MYSQL_DB, JUY_HOST, JUY_PORT, JUY_USER, JUY_PASSWD,
                      JUY_DB, DC_HOST, DC_PORT, DC_USER, DC_PASSWD, DC_DB, SECRET, TOKEN, LOCAL, BG_HOST, BG_PORT,
-                     BG_USER, BG_PASSWD, BG_DB, THEME_HOST, THEME_PORT, THEME_USER, THEME_PASSWD, THEME_DB)
+                     BG_USER, BG_PASSWD, BG_DB, THEME_HOST, THEME_PORT, THEME_USER, THEME_PASSWD, THEME_DB,
+                     TEST_MYSQL_HOST, TEST_MYSQL_PORT, TEST_MYSQL_USER, TEST_MYSQL_PASSWORD, TEST_MYSQL_DB)
 from sql_pool import PyMysqlPoolBase
 
 if LOCAL:
@@ -77,12 +81,22 @@ class NewsBase(object):
         "password": DC_PASSWD,
         "db": DC_DB,
     }
+    
+    # 测试数据库 
+    test_cfg = {
+        "host": TEST_MYSQL_HOST,
+        "port": TEST_MYSQL_PORT,
+        "user": TEST_MYSQL_USER,
+        "password": TEST_MYSQL_PASSWORD,
+        "db": TEST_MYSQL_DB,
+    }
 
     def __init__(self):
         self.dc_client = None
         self.target_client = None
         self.juyuan_client = None
         self.theme_client = None
+        self.test_client = None
 
     def _dc_init(self):
         if not self.dc_client:
@@ -100,15 +114,14 @@ class NewsBase(object):
         if not self.theme_client:
             self.theme_client = self._init_pool(self.theme_cfg)
 
+    def _test_init(self):
+        if not self.test_client:
+            self.test_client = self._init_pool(self.test_cfg)
+
     def __del__(self):
-        if self.dc_client:
-            self.dc_client.dispose()
-        if self.target_client:
-            self.target_client.dispose()
-        if self.juyuan_client:
-            self.juyuan_client.dispose()
-        if self.theme_client:
-            self.theme_client.dispose()
+        for client in (self.dc_client, self.target_client, self.juyuan_client, self.theme_client, self.test_client):
+            if client:
+                client.dispose()
 
     def _init_pool(self, cfg: dict):
         """
