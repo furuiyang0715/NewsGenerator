@@ -10,16 +10,11 @@ class Scanner(NewsBase):
     def __init__(self):
         super(Scanner, self).__init__()
         self.source_table = 'LC_IncomeStatementAll'
-        self.juyuan = None
-
-    def __del__(self):
-        if self.juyuan:
-            self.juyuan.dispose()
 
     def get_more_info_by_companycode(self, company_code):
 
         sql = '''select SecuCode, SecuAbbr, InnerCode from secumain where CompanyCode = %s; '''
-        ret = self.juyuan.select_one(sql, company_code)
+        ret = self.juyuan_client.select_one(sql, company_code)
         return ret
 
     def scan(self, _today, _now):
@@ -32,8 +27,7 @@ class Scanner(NewsBase):
     def _scan(self, _today, _now):
         """程序入口: 不断扫描数据库 找出发布时间等于扫描时间的记录"""
         # 初始化连接池
-        self.juyuan = self._init_pool(self.juyuan_cfg)
-
+        self._juyuan_init()
         # 与产品沟通之后 这里做了一个调整 就是将"净利润"改为"归属于母公司所有者的净利润"
         # NetProfit --> NPParentCompanyOwners
         # 这里核心的查询条件是发布时间在今天的 0 点到次日的 0 点之间的数据 发布时间是以天为单位的 只会落在第一个查询条件 _today 上
@@ -45,7 +39,7 @@ and BasicEPS is not null \
 and IfAdjusted in (1,2) \
 and InfoPublDate >= '{}' and InfoPublDate < '{}'; '''.format(fields_str, self.source_table, _today, _now)
         logger.info("本次扫描涉及到的查询语句是:\n {}".format(sql))
-        ret = self.juyuan.select_all(sql)
+        ret = self.juyuan_client.select_all(sql)
         logger.info("本次扫描查询出的个数是:{}".format(len(ret)))
 
         # 当天无发布数据的

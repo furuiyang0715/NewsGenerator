@@ -54,7 +54,7 @@ class GenFiance(NewsBase):
             self._create_table()
 
     def _create_table(self):
-        client = self._init_pool(self.product_cfg)
+        self._target_init()
         # 联合唯一主键： CompanyCode, EndDate, InfoPublDate
         sql = '''
         CREATE TABLE IF NOT EXISTS `{}` (
@@ -76,11 +76,11 @@ class GenFiance(NewsBase):
            UNIQUE KEY `un2` (`CompanyCode`, `EndDate`, `InfoPublDate`) USING BTREE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT='财务资讯生成表';
         '''.format(self.target_table)
-        client.insert(sql)
-        client.dispose()
+        self.target_client.insert(sql)
+        self.target_client.end()
 
     def get_quarter_info(self, quarter: datetime.datetime):
-        juyuan = self._init_pool(self.juyuan_cfg)
+        self._juyuan_init()
         sql = '''
 select id, InfoPublDate, EndDate, IfMerged, IfAdjusted, NPParentCompanyOwners, OperatingRevenue, BasicEPS \
 from {} where CompanyCode={} and IfMerged=1 \
@@ -90,7 +90,7 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         '''.format(self.source_table, self.company_code, quarter)
         # 升序为 asc 降序为 desc
         logger.debug(sql)
-        ret = juyuan.select_one(sql)
+        ret = self.juyuan_client.select_one(sql)
         return ret
 
     def diff_quarters(self, _quarter_this, _quarter_last):
@@ -207,9 +207,8 @@ ORDER BY InfoPublDate desc, IfAdjusted asc limit 1;
         logger.info("\n" + pprint.pformat(item))
 
         # 检查是否已经存在数据 与已存在值的偏差
-        target_client = self._init_pool(self.product_cfg)
-        self.check_exist_and_deviation(item, target_client)
-        target_client.dispose()
+        self._target_init()
+        self.check_exist_and_deviation(item, self.target_client)
 
     def check_exist_and_deviation(self, item, client):
         sql = '''select * from {} where CompanyCode = {} and EndDate = '{}'; 
