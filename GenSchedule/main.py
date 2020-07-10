@@ -162,7 +162,7 @@ def main():
 
     north = NorthFund()
     while True:
-        print("当前调度系统中的任务列表 {}".format(schedule.jobs))
+        print("当前调度系统中的任务列表:  \n{}".format(pprint.pformat(schedule.jobs)))
         schedule.run_pending()
 
         _now = datetime.datetime.now()
